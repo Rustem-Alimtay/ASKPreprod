@@ -1,0 +1,95 @@
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Calendar,
+  CircleDot,
+  Contact,
+  Cpu,
+  Database,
+  DollarSign,
+  FolderKanban,
+  Globe,
+  Headphones,
+  Heart,
+  HelpCircle,
+  Landmark,
+  MapPin,
+  Megaphone,
+  Palette,
+  PartyPopper,
+  Rocket,
+  Scale,
+  Shield,
+  Store,
+  Target,
+  Truck,
+  Users,
+  Wrench,
+  Zap,
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Ticket,
+  Monitor,
+  Pin,
+  PinOff,
+  UserCircle,
+  type LucideIcon,
+} from "lucide-react";
+
+const iconRegistry: Record<string, LucideIcon> = {
+  Award,
+  BarChart3,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Calendar,
+  CircleDot,
+  Contact,
+  Cpu,
+  Database,
+  DollarSign,
+  FolderKanban,
+  Globe,
+  Headphones,
+  Heart,
+  HelpCircle,
+  Landmark,
+  MapPin,
+  Megaphone,
+  Palette,
+  PartyPopper,
+  Rocket,
+  Scale,
+  Shield,
+  Store,
+  Target,
+  Truck,
+  Users,
+  Wrench,
+  Zap,
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Ticket,
+  Monitor,
+  Pin,
+  PinOff,
+  UserCircle,
+};
+
+export function resolveIcon(name: string): LucideIcon {
+  if (!name) return HelpCircle;
+  return iconRegistry[name] || HelpCircle;
+}
+
+export function resolveIconOrNull(name: string): LucideIcon | undefined {
+  return iconRegistry[name];
+}
+
+export function registerIcon(name: string, component: LucideIcon) {
+  iconRegistry[name] = component;
+}
