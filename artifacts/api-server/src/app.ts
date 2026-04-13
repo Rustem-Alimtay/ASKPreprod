@@ -24,7 +24,7 @@ app.use(helmet({
       fontSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", "https:", "wss:", ...(isDev ? ["ws:"] : [])],
       frameSrc: ["'self'", "https://view.monday.com", "https://*.powerbi.com", "https://*.microsoft.com", "https://*.microsoftonline.com", "https://*.msftauth.net", "https://*.msauth.net", "https://*.live.com", "https://*.office.com", "https://*.sharepoint.com"],
-      frameAncestors: ["'self'"],
+      frameAncestors: ["'self'", "https://*.replit.dev", "https://*.replit.app"],
     },
   },
   crossOriginEmbedderPolicy: false,

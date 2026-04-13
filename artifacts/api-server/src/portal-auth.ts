@@ -30,6 +30,9 @@ export function setupAuth(app: Express) {
     tableName: "sessions",
   });
 
+  const isReplit = !!process.env.REPL_ID;
+  const isProd = process.env.NODE_ENV === "production";
+
   app.set("trust proxy", 1);
   app.use(
     session({
@@ -39,11 +42,11 @@ export function setupAuth(app: Express) {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd || isReplit,
+        sameSite: isReplit ? "none" as const : "lax" as const,
         maxAge: sessionTtl,
       },
-      proxy: process.env.NODE_ENV === "production",
+      proxy: true,
     })
   );
 }
