@@ -329,6 +329,11 @@ export async function seedAdminUser() {
       if (existingAdmin.role !== "superadmin") {
         await storage.updateManagedUser(existingAdmin.id, { role: "superadmin" });
         console.log("Admin user upgraded to superadmin");
+      }
+      if (process.env.ADMIN_DEFAULT_PASSWORD) {
+        const hashedPassword = await bcrypt.hash(process.env.ADMIN_DEFAULT_PASSWORD, 10);
+        await storage.updateManagedUser(existingAdmin.id, { password: hashedPassword });
+        console.log("Admin password updated from ADMIN_DEFAULT_PASSWORD env var");
       } else {
         console.log("Admin user already exists");
       }
