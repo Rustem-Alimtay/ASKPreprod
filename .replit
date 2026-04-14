@@ -38,3 +38,8 @@ externalPort = 3000
 [[ports]]
 localPort = 25266
 externalPort = 3003
+
+[userenv]
+
+[userenv.production]
+ADMIN_DEFAULT_PASSWORD = "admin"
