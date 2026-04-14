@@ -15,16 +15,15 @@ window.addEventListener("unhandledrejection", (event) => {
   }
 });
 
-window.onerror = (_message, _source, _lineno, _colno, error) => {
-  if (error && !(error instanceof Error)) {
+window.addEventListener("error", (event) => {
+  if (!event.error || !(event.error instanceof Error)) {
+    event.preventDefault();
     const msg =
-      typeof error === "string"
-        ? error
-        : "Uncaught non-Error exception";
+      typeof event.error === "string"
+        ? event.error
+        : event.message || "Uncaught non-Error exception";
     console.error(new Error(msg));
-    return true;
   }
-  return false;
-};
+});
 
 createRoot(document.getElementById("root")!).render(<App />);
