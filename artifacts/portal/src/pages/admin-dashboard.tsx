@@ -212,7 +212,6 @@ function UserPagesCell({ userId }: { userId: string }) {
   const hasRestrictions = registryKeys.some(k => !!userSubmodules[k]);
   const serviceLabels: Record<string, string> = {
     erp: "ERP",
-    equestrian: "Equestrian",
     projects: "Projects",
   };
 

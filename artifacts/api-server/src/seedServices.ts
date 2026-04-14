@@ -66,16 +66,6 @@ const defaultServices = [
     sortOrder: "6",
   },
   {
-    name: "Equestrian",
-    description: null,
-    url: "/equestrian",
-    icon: "CircleDot",
-    category: "operations",
-    isEnabled: true,
-    isExternal: false,
-    sortOrder: "7",
-  },
-  {
     name: "Events & Entertainment",
     description: null,
     url: "/events",
@@ -340,14 +330,6 @@ interface ServiceSectionDef {
 }
 
 const defaultServiceSections: ServiceSectionDef[] = [
-  {
-    serviceUrl: "/equestrian",
-    sections: [
-      { title: "Equestrian Overview", icon: "CircleDot", sortOrder: 0, isEnabled: true, isExpandable: false, templateType: "hero_banner", config: JSON.stringify({ gradient: "from-emerald-600 to-teal-600" }) },
-      { title: "Equinem", icon: "Home", sortOrder: 1, isEnabled: true, isExpandable: true, templateType: "tabs" },
-      { title: "Stable Assets Manager", icon: "Warehouse", sortOrder: 3, isEnabled: true, isExpandable: false, templateType: "data_table" },
-    ],
-  },
   {
     serviceUrl: "/business-units",
     sections: [

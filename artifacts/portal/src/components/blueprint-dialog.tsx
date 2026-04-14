@@ -57,7 +57,6 @@ const portalSections = [
   { name: "erp", title: "Finance" },
   { name: "hrms", title: "HRMS" },
   { name: "customer_db", title: "Customer Database" },
-  { name: "equestrian", title: "Equestrian Center" },
   { name: "asset_lease", title: "Asset & Lease" },
   { name: "events", title: "Events & Entertainment" },
   { name: "media_marketing", title: "Media & Marketing" },

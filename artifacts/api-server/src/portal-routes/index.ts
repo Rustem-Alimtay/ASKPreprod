@@ -8,7 +8,6 @@ import { registerCustomerRoutes } from "./customers";
 import { registerDataSourceRoutes } from "./data-sources";
 import { registerProjectRoutes } from "./projects";
 import { registerRequisitionRoutes } from "./requisitions";
-import { registerEquestrianRoutes } from "./equestrian";
 import { registerSsoRoutes } from "./sso";
 import { registerDepartmentRoutes } from "./departments";
 import { registerAzureTableRoutes } from "./azure-tables";
@@ -21,7 +20,6 @@ export async function registerAllRoutes(app: Express, httpServer: Server): Promi
   await registerDataSourceRoutes(app, httpServer);
   await registerProjectRoutes(app, httpServer);
   await registerRequisitionRoutes(app, httpServer);
-  await registerEquestrianRoutes(app, httpServer);
   await registerSsoRoutes(app, httpServer);
   await registerDepartmentRoutes(app, httpServer);
   await registerAzureTableRoutes(app, httpServer);

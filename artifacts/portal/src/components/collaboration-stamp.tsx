@@ -182,7 +182,6 @@ const sectionTitleMap: Record<string, string> = {
   erp: "Finance",
   hrms: "HRMS",
   customer_db: "Customer Database",
-  equestrian: "Equestrian Center",
   asset_lease: "Asset & Lease",
   events: "Events & Entertainment",
   media_marketing: "Media & Marketing",

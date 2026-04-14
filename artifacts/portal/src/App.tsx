@@ -53,7 +53,6 @@ import VeterinaryPage from "@/pages/veterinary";
 import ProjectsPage from "@/pages/projects";
 import ManageTagsPage from "@/pages/manage-tags";
 import HRMSPage from "@/pages/hrms";
-import EquestrianPage from "@/pages/equestrian";
 import EventsPage from "@/pages/events";
 import IntranetPage from "@/pages/intranet";
 import LegalPage from "@/pages/legal";
@@ -175,10 +174,6 @@ function ProtectedRoutes() {
                 <Route path="/tickets/new" component={MyTicketsPage} />
                 <Route path="/my-tickets" component={MyTicketsPage} />
                 <Route path="/other-systems" component={OtherSystemsPage} />
-                <Route path="/equestrian/overview" component={EquestrianPage} />
-                <Route path="/equestrian">
-                  <Redirect to="/stable-master" />
-                </Route>
                 <Route path="/events" component={EventsPage} />
                 <Route path="/intranet" component={IntranetPage} />
                 <Route path="/legal" component={LegalPage} />
