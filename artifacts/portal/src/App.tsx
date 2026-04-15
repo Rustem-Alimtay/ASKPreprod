@@ -61,7 +61,6 @@ import ITDTPage from "@/pages/it-dt";
 import ProjectGroupPage from "@/pages/project-group";
 import CustomerDBPage from "@/pages/customer-db";
 import CustomerProfilePage from "@/pages/customer-profile";
-import AzureTablesPage from "@/pages/azure-tables";
 import DynamicServicePage from "@/pages/dynamic-service";
 import StableMasterModule from "@/pages/stable-master/index";
 import RequisitionsListPage from "@/pages/requisitions-list";
@@ -188,7 +187,6 @@ function ProtectedRoutes() {
                 <Route path="/manage-tags" component={ManageTagsPage} />
                 <Route path="/applications/customer-db" component={CustomerDBPage} />
                 <Route path="/applications/customer-db/:id" component={CustomerProfilePage} />
-                <Route path="/azure-tables" component={AzureTablesPage} />
                 <Route path="/services/:id" component={DynamicServicePage} />
                 <Route component={NotFound} />
               </Switch>

@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { externalServices, iconLibrary, spaces, projectGroups, projects, projectAssignments, managedUsers, sectionTemplates, pageSections, smStables, smBoxes, smHorses, smCustomers, smItemServices, smLiveryPackages, smLiveryAgreements, dataSources, dsRecords } from "@workspace/db";
+import { externalServices, iconLibrary, spaces, projectGroups, projects, projectAssignments, managedUsers, sectionTemplates, pageSections, dataSources, dsRecords } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import path from "path";
@@ -134,16 +134,6 @@ const defaultServices = [
     isEnabled: true,
     isExternal: false,
     sortOrder: "14",
-  },
-  {
-    name: "Azure Tables",
-    description: null,
-    url: "/azure-tables",
-    icon: "Database",
-    category: "general",
-    isEnabled: true,
-    isExternal: false,
-    sortOrder: "15",
   },
 ];
 
@@ -523,97 +513,6 @@ export async function seedExternalServices() {
     await seedSectionTemplatesAndPages();
   } catch (error) {
     console.error("Failed to seed external services:", error);
-  }
-}
-
-export async function seedStableMasterData() {
-  try {
-    const existing = await db.select().from(smStables);
-    if (existing.length > 0) {
-      console.log("StableMaster data already seeded");
-      return;
-    }
-    console.log("Seeding StableMaster data...");
-
-    const [stableA] = await db.insert(smStables).values({ name: "Block A", notes: "Main stable block with 6 boxes", isActive: true }).returning();
-    const [stableB] = await db.insert(smStables).values({ name: "Block B", notes: "Secondary stable block", isActive: true }).returning();
-
-    const boxANames = ["A01", "A02", "A03", "A04", "A05", "A06"];
-    for (let i = 0; i < boxANames.length; i++) {
-      await db.insert(smBoxes).values({
-        stableId: stableA.id,
-        name: boxANames[i],
-        boxType: "STALL",
-        status: i < 2 ? "OCCUPIED" : "AVAILABLE",
-      });
-    }
-    const boxBNames = ["B01", "B02", "B03", "B04"];
-    for (let i = 0; i < boxBNames.length; i++) {
-      await db.insert(smBoxes).values({
-        stableId: stableB.id,
-        name: boxBNames[i],
-        boxType: i === 3 ? "STORAGE" : "STALL",
-        status: i < 2 ? "OCCUPIED" : "AVAILABLE",
-      });
-    }
-
-    const [horse1, horse2, horse3, horse4] = await db.insert(smHorses).values([
-      { name: "Thunder", color: "Bay", sex: "Stallion", status: "ACTIVE", dob: "2018-03-15" },
-      { name: "Storm", color: "Black", sex: "Mare", status: "ACTIVE", dob: "2019-07-22" },
-      { name: "Blaze", color: "Chestnut", sex: "Gelding", status: "ACTIVE", dob: "2017-11-08" },
-      { name: "Misty", color: "Grey", sex: "Mare", status: "ACTIVE", dob: "2020-01-30" },
-    ]).returning();
-
-    const [cust1, cust2, cust3] = await db.insert(smCustomers).values([
-      { name: "Sarah Johnson", email: "sarah@example.com", phone: "+971501234567", status: "ACTIVE" },
-      { name: "Ahmed Al Maktoum", email: "ahmed@example.com", phone: "+971502345678", status: "ACTIVE" },
-      { name: "Emily Carter", email: "emily@example.com", phone: "+971503456789", status: "ACTIVE" },
-    ]).returning();
-
-    await db.insert(smItemServices).values([
-      { name: "Full Board", category: "SERVICE", unitOptions: ["month"], defaultUnit: "month", unitPrice: 350000, isActive: true },
-      { name: "Horseshoeing", category: "SERVICE", unitOptions: ["each"], defaultUnit: "each", unitPrice: 45000, isActive: true },
-      { name: "Veterinary Checkup", category: "SERVICE", unitOptions: ["each"], defaultUnit: "each", unitPrice: 25000, isActive: true },
-      { name: "Hay Bale", category: "ITEM", unitOptions: ["each", "day"], defaultUnit: "each", unitPrice: 3500, isActive: true },
-      { name: "Feed Supplement", category: "ITEM", unitOptions: ["each", "day", "month"], defaultUnit: "each", unitPrice: 12000, isActive: true },
-      { name: "Arena Rental", category: "SERVICE", unitOptions: ["each", "day"], defaultUnit: "each", unitPrice: 15000, isActive: true },
-    ]);
-
-    const [pkg1, pkg2] = await db.insert(smLiveryPackages).values([
-      { name: "Full Livery", monthlyPrice: 450000, coveredItemServiceIds: [] },
-      { name: "Part Livery", monthlyPrice: 280000, coveredItemServiceIds: [] },
-    ]).returning();
-
-    const allBoxes = await db.select().from(smBoxes);
-    const occupiedBoxes = allBoxes.filter(b => b.status === "OCCUPIED");
-    if (occupiedBoxes.length >= 2) {
-      await db.insert(smLiveryAgreements).values([
-        {
-          agreementType: "PERMANENT_AUTO_RENEW",
-          startDate: "2025-01-01",
-          stableId: stableA.id,
-          boxId: occupiedBoxes[0].id,
-          horseId: horse1.id,
-          customerId: cust1.id,
-          liveryPackageId: pkg1.id,
-          status: "ACTIVE",
-        },
-        {
-          agreementType: "PERMANENT_AUTO_RENEW",
-          startDate: "2025-02-01",
-          stableId: stableA.id,
-          boxId: occupiedBoxes[1].id,
-          horseId: horse2.id,
-          customerId: cust2.id,
-          liveryPackageId: pkg2.id,
-          status: "ACTIVE",
-        },
-      ]);
-    }
-
-    console.log("StableMaster seed data created");
-  } catch (error) {
-    console.error("Failed to seed StableMaster data:", error);
   }
 }
 

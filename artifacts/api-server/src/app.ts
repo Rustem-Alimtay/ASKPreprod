@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 import { createServer } from "http";
 import { setupAuth, registerAuthRoutes, seedAdminUser } from "./portal-auth";
 import { registerAllRoutes } from "./portal-routes/index";
-import { seedExternalServices, seedSpacesAndProjects, seedStableMasterData, seedDataSources } from "./seedServices";
+import { seedExternalServices, seedSpacesAndProjects, seedDataSources } from "./seedServices";
 import { storage } from "./storage";
 import { logger } from "./lib/logger";
 
@@ -72,8 +72,6 @@ const largeJsonParser = express.json({ limit: "50mb" });
 const importRoutes = [
   "/api/customers/import",
   "/api/data-sources/:slug/import",
-  "/api/sm/horses/import",
-  "/api/sm/item-services/import",
   "/api/sm2/customers/import",
   "/api/sm2/horses/import",
   "/api/sm2/boxes/import",
@@ -106,7 +104,6 @@ async function initializeApp() {
     await seedAdminUser();
     await seedExternalServices(storage);
     await seedSpacesAndProjects(storage);
-    await seedStableMasterData(storage);
     await seedDataSources(storage);
     appReady = true;
     logger.info("Portal app initialized successfully");
