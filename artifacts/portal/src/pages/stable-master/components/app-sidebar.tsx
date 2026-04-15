@@ -33,65 +33,63 @@ import {
 import { Button } from "@/components/ui/button";
 import { Horseshoe } from "./icons/horseshoe";
 
-const SM = "/stable-master";
-
 const navGroups = [
   {
     label: "Billing Element",
     adminOnly: false,
     items: [
-      { title: "Billing Elements", url: `${SM}/billing-elements`, icon: Receipt },
+      { title: "Billing Elements", url: "/billing-elements", icon: Receipt },
     ],
   },
   {
     label: "Livery Agreements",
     adminOnly: false,
     items: [
-      { title: "Current Agreements", url: `${SM}/agreements/current`, icon: FileText },
-      { title: "New Agreement", url: `${SM}/agreements/new`, icon: FilePlus },
-      { title: "History", url: `${SM}/agreements/history`, icon: History },
+      { title: "Current Agreements", url: "/agreements/current", icon: FileText },
+      { title: "New Agreement", url: "/agreements/new", icon: FilePlus },
+      { title: "History", url: "/agreements/history", icon: History },
     ],
   },
   {
     label: "Master Data",
     adminOnly: false,
     items: [
-      { title: "Customers", url: `${SM}/customers`, icon: Users },
-      { title: "Horses", url: `${SM}/horses`, icon: Horseshoe },
-      { title: "Stables", url: `${SM}/stables`, icon: Building2 },
-      { title: "Boxes", url: `${SM}/boxes`, icon: Box },
-      { title: "Items", url: `${SM}/items`, icon: Package },
+      { title: "Customers", url: "/customers", icon: Users },
+      { title: "Horses", url: "/horses", icon: Horseshoe },
+      { title: "Stables", url: "/stables", icon: Building2 },
+      { title: "Boxes", url: "/boxes", icon: Box },
+      { title: "Items", url: "/items", icon: Package },
     ],
   },
   {
     label: "Stable Management",
     adminOnly: false,
     items: [
-      { title: "Horse Movements", url: `${SM}/stable-management/horse-movements`, icon: ArrowRightLeft },
+      { title: "Horse Movements", url: "/stable-management/horse-movements", icon: ArrowRightLeft },
     ],
   },
   {
     label: "Billing",
     adminOnly: false,
     items: [
-      { title: "To Invoice", url: `${SM}/billing/to-invoice`, icon: ClipboardList },
-      { title: "Invoices", url: `${SM}/billing/invoices`, icon: CreditCard },
+      { title: "To Invoice", url: "/billing/to-invoice", icon: ClipboardList },
+      { title: "Invoices", url: "/billing/invoices", icon: CreditCard },
     ],
   },
   {
     label: "Reports",
     adminOnly: false,
     items: [
-      { title: "Livery Reports", url: `${SM}/reports/livery`, icon: BarChart3 },
+      { title: "Livery Reports", url: "/reports/livery", icon: BarChart3 },
     ],
   },
   {
     label: "Administration",
     adminOnly: true,
     items: [
-      { title: "Users", url: `${SM}/admin/users`, icon: UserCog },
-      { title: "Settings", url: `${SM}/admin/settings`, icon: Settings },
-      { title: "Audit Logs", url: `${SM}/admin/audit-logs`, icon: Shield },
+      { title: "Users", url: "/admin/users", icon: UserCog },
+      { title: "Settings", url: "/admin/settings", icon: Settings },
+      { title: "Audit Logs", url: "/admin/audit-logs", icon: Shield },
     ],
   },
 ];
@@ -107,7 +105,7 @@ export function AppSidebar({ onLogout, userRole }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <Link href={SM}>
+        <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer">
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
               <Horseshoe className="w-5 h-5" inverted />

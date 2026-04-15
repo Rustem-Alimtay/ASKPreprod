@@ -211,8 +211,7 @@ function App() {
               <Route path="/login" component={LoginPage} />
               <Route path="/forgot-password" component={ForgotPasswordPage} />
               <Route path="/reset-password/:token" component={ResetPasswordPage} />
-              <Route path="/stable-master/:rest*" component={StableMasterModule} />
-              <Route path="/stable-master" component={StableMasterModule} />
+              <Route path="/stable-master" nest component={StableMasterModule} />
               <Route>
                 <ProtectedRoutes />
               </Route>
