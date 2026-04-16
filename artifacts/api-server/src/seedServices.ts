@@ -568,6 +568,8 @@ const DATA_SOURCE_COLUMNS: Record<string, { key: string; label: string; type: st
     { key: "direct_manager_full_name", label: "Direct Manager - Full Name", type: "text" },
     { key: "department_head_code", label: "Department Head Code", type: "text" },
     { key: "department_head_full_name", label: "Department Head - Full Name", type: "text" },
+    { key: "budget_owner_code", label: "Budget Owner Code", type: "text" },
+    { key: "budget_owner_full_name", label: "Budget Owner Full Name", type: "text" },
   ],
 };
 
@@ -586,6 +588,9 @@ const EMPLOYEE_EXCEL_COLUMN_MAP: Record<string, string> = {
   "Direct Manager - Full Name": "direct_manager_full_name",
   "Department Head Code": "department_head_code",
   "Department Head  - Full Name": "department_head_full_name",
+  "Budget Owner Code": "budget_owner_code",
+  "Budget Owner Full Name": "budget_owner_full_name",
+  "Budget Owner - Full Name": "budget_owner_full_name",
 };
 
 const NUMERIC_EMPLOYEE_KEYS = new Set(["employee_code", "cost_center_account_number"]);
