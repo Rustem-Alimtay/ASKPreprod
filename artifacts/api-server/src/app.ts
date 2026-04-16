@@ -102,6 +102,7 @@ async function initializeApp() {
     registerAuthRoutes(app);
     await registerAllRoutes(app, httpServer);
     await seedAdminUser();
+    await storage.initTicketSequence();
     await seedExternalServices(storage);
     await seedSpacesAndProjects(storage);
     await seedDataSources(storage);
