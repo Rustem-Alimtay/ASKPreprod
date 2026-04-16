@@ -28,6 +28,7 @@
     "minimatch": "^10.2.5",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.5",
+    "oauth-1.0a": "^2.2.6",
     "openid-client": "^6.8.2",
     "otplib": "^13.4.0",
     "passport": "^0.7.0",

@@ -10,6 +10,7 @@ import { registerProjectRoutes } from "./projects";
 import { registerRequisitionRoutes } from "./requisitions";
 import { registerSsoRoutes } from "./sso";
 import { registerDepartmentRoutes } from "./departments";
+import sm2Router from "./stable-master";
 
 export async function registerAllRoutes(app: Express, httpServer: Server): Promise<void> {
   registerErpDashboardRoutes(app, httpServer);
@@ -21,4 +22,5 @@ export async function registerAllRoutes(app: Express, httpServer: Server): Promi
   await registerRequisitionRoutes(app, httpServer);
   await registerSsoRoutes(app, httpServer);
   await registerDepartmentRoutes(app, httpServer);
+  app.use("/api/sm2", sm2Router);
 }
