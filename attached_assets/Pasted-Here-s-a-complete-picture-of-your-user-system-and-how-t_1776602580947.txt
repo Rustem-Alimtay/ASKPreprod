@@ -1,0 +1,75 @@
+Here's a complete picture of your user system and how to test each role.
+
+The 5 Roles & What They Can Do
+Role	Main Job	Specific Powers
+ADMIN	Full control	Everything — including all sign-offs, user management, settings, audit logs, deleting invoices/stables/boxes
+LIVERY_ADMIN	Day-to-day operations	Create/edit horses (one at a time, no Excel import), agreements, billing elements, generate invoices (after both sign-offs), rollback invoices
+VETERINARY	Health sign-off	Toggle the Vet approval button on the To Invoice page
+STORES	Inventory sign-off	Toggle the Store approval button on the To Invoice page
+FINANCE	ERP integration	Generate Sales Order (SO), send invoice to NetSuite
+What's hidden per role (UI-side)
+Administration sidebar section (Users, Settings, Audit Logs) → only visible to ADMIN
+Excel "Import" buttons on Horses/Boxes/Customers/Stables/Items → only ADMIN
+"New Horse" button → ADMIN + LIVERY_ADMIN
+Vet sign-off button → only ADMIN + VETERINARY can click it
+Store sign-off button → only ADMIN + STORES can click it
+"Send to NetSuite" / "Generate SO" on invoices → only ADMIN + FINANCE
+"Rollback invoice" → only ADMIN + LIVERY_ADMIN
+"Delete invoice" → only ADMIN
+Existing Test Users in Your Database
+You currently have these users:
+
+Username	Role	Login method
+admin	ADMIN	password (admin123)
+Radha	ADMIN	likely SSO (no local password)
+systemadmin	admin (lowercase — may be inactive)	SSO
+andrea.villarin@adec.ae	LIVERY_ADMIN	SSO only
+varun.mohan@adec.ae	LIVERY_ADMIN	SSO only
+nixon.silveira@adec.ae	VETERINARY	SSO only
+orla.ohanlon@adec.ae	VETERINARY	SSO only
+Muhammad.saad@adec.ae	STORES	SSO only
+jassim.shanavas@adec.ae	FINANCE	SSO only
+Problem for manual testing: Only admin has a local password. The SSO-created users (Livery Admin, Vet, Stores, Finance) have no usable password set, so you can't log in as them without going through the Unified Portal SSO flow.
+
+How to Test Each Role Manually
+You have two options. I'd recommend Option A for ease.
+
+Option A — Create test accounts with passwords (recommended):
+Log in as admin → go to Administration → Users → create one test user per role:
+
+test_livery → LIVERY_ADMIN
+test_vet → VETERINARY
+test_stores → STORES
+test_finance → FINANCE
+Set a known password for each (e.g. test123). Then log in/out to switch between them.
+
+Option B — Temporarily change admin's role in the Users page to test each role's UI, then change it back. Faster but you can't test cross-role workflows (e.g., Vet approves, then Livery Admin generates).
+
+Manual Test Scenarios
+Scenario 1 — End-to-end invoice workflow (multi-role)
+As LIVERY_ADMIN: Go to Billing Elements → add 2-3 adhoc items for a customer's horse with a transaction date in the current month → Save.
+As LIVERY_ADMIN: Go to To Invoice → select the billing month → confirm both sign-off buttons say "Vet Validation Pending" / "Store Validation Pending" → confirm Generate Invoice is disabled. Try clicking the Vet/Store sign-off buttons — they should be disabled (you're not Vet/Stores).
+As VETERINARY: Go to To Invoice → click "Vet Validation Pending" → it turns green and shows "Vet Approved" with your name. Try clicking the Stores button — should be disabled.
+As STORES: Click "Store Validation Pending" → turns blue, "Store Approved".
+As LIVERY_ADMIN: Go back to To Invoice → Generate Invoice button should now be enabled → select line items → Generate → customer disappears from To Invoice; new invoice appears on Invoices page with status APPROVED.
+As FINANCE: Go to Invoices → click "Generate SO" then "Send to NetSuite" on the new invoice. Verify the buttons exist and work.
+As LIVERY_ADMIN: Try to rollback the invoice (should be allowed). Try to delete it (should be hidden — only ADMIN sees that).
+As VETERINARY: Try to go back and toggle the approvals for that customer/month — should be locked because the invoice exists.
+Scenario 2 — Permission boundaries
+As LIVERY_ADMIN: Go to Horses → confirm you see "New Horse" but NOT "Import". Try entering /admin/users directly in the URL → should redirect to dashboard.
+As VETERINARY: Go to Horses → confirm "New Horse" button is hidden. Go to Customers → confirm Import button hidden. Go to To Invoice → Stores button is disabled, only Vet button is clickable.
+As FINANCE: On To Invoice, both sign-off buttons should be disabled (Finance has no sign-off rights). On Invoices, you should see ERP buttons.
+Direct URL test: As any non-admin, try /admin/users, /admin/settings, /admin/audit-logs — all should redirect.
+Scenario 3 — ADEC exclusion
+As any user: Go to Reports → confirm ADEC customer never appears in any chart, KPI count, arrival/departure list, or all-customers list.
+Go to Customers page → ADEC SHOULD still appear here (only reports exclude it).
+Go to To Invoice → ADEC may still appear there (reports-only exclusion).
+Scenario 4 — Billing elements batch save
+As LIVERY_ADMIN: Click Add on a horse → fill the form → click "Add Additional" → confirm date is preserved → add another → click Cancel → verify nothing was saved (check Recent Billing Elements list).
+Repeat but click Save at the end → verify all pending items were saved together.
+Scenario 5 — Horse name no longer doubles
+As LIVERY_ADMIN: Edit a horse with a passport name → reassign owner → save → reopen edit → verify name field shows just the raw horse name (not "name (passport) (passport)").
+Scenario 6 — Pre-generation lock
+As VETERINARY: Approve a customer/month.
+As LIVERY_ADMIN: Generate the invoice.
+As VETERINARY: Try to revoke the approval → should fail (lock message: "an invoice already exists").
