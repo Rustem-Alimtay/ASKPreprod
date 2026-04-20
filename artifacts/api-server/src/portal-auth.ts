@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { storage } from "./storage";
 import { passwordSchema } from "@workspace/db";
+import { env, isProd, isDev } from "./lib/env";
 
 declare module "express-session" {
   interface SessionData {
@@ -14,8 +15,8 @@ declare module "express-session" {
 }
 
 function getResetBaseUrl(req: Request): string {
-  if (process.env.APP_URL) {
-    return process.env.APP_URL.replace(/\/+$/, "");
+  if (env.APP_URL) {
+    return env.APP_URL.replace(/\/+$/, "");
   }
   return `${req.protocol}://${req.get("host")}`.replace(/\/+$/, "");
 }
@@ -24,19 +25,18 @@ export function setupAuth(app: Express) {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
+    conString: env.DATABASE_URL,
     createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",
   });
 
-  const isReplit = !!process.env.REPL_ID;
-  const isProd = process.env.NODE_ENV === "production";
+  const isReplit = !!env.REPL_ID;
 
   app.set("trust proxy", 1);
   app.use(
     session({
-      secret: process.env.SESSION_SECRET as string,
+      secret: env.SESSION_SECRET,
       store: sessionStore,
       resave: false,
       saveUninitialized: false,
@@ -181,7 +181,7 @@ export function registerAuthRoutes(app: Express) {
         console.warn(`[WARN] Password reset requested for ${user.email} but email was NOT delivered. Check SendGrid configuration.`);
       }
 
-      const showDevToken = process.env.NODE_ENV === "development" && process.env.DEV_SHOW_RESET_TOKEN === "true";
+      const showDevToken = isDev && env.DEV_SHOW_RESET_TOKEN === "true";
       res.json({ message: "If an account with that email exists, a reset link has been generated", token: (!emailSent && showDevToken) ? token : undefined });
     } catch (error) {
       console.error("Forgot password error:", error);
@@ -330,15 +330,15 @@ export async function seedAdminUser() {
         await storage.updateManagedUser(existingAdmin.id, { role: "superadmin" });
         console.log("Admin user upgraded to superadmin");
       }
-      if (process.env.ADMIN_DEFAULT_PASSWORD) {
-        const hashedPassword = await bcrypt.hash(process.env.ADMIN_DEFAULT_PASSWORD, 10);
+      if (env.ADMIN_DEFAULT_PASSWORD) {
+        const hashedPassword = await bcrypt.hash(env.ADMIN_DEFAULT_PASSWORD, 10);
         await storage.updateManagedUser(existingAdmin.id, { password: hashedPassword });
         console.log("Admin password updated from ADMIN_DEFAULT_PASSWORD env var");
       } else {
         console.log("Admin user already exists");
       }
     } else {
-      const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || generateSecurePassword();
+      const adminPassword = env.ADMIN_DEFAULT_PASSWORD || generateSecurePassword();
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       await storage.createManagedUser({
         email: "admin@example.com",
@@ -350,7 +350,7 @@ export async function seedAdminUser() {
         isActive: true,
         lastActiveAt: null,
       });
-      if (process.env.ADMIN_DEFAULT_PASSWORD) {
+      if (env.ADMIN_DEFAULT_PASSWORD) {
         console.log("Default admin user created (username: admin, password from ADMIN_DEFAULT_PASSWORD env var)");
       } else {
         console.log("Default admin user created (username: admin). Set ADMIN_DEFAULT_PASSWORD env var or change the password immediately.");
@@ -359,7 +359,7 @@ export async function seedAdminUser() {
 
     const existingSystemAdmin = await storage.getManagedUserByUsername("systemadmin");
     if (!existingSystemAdmin) {
-      const systemAdminPassword = process.env.SYSTEMADMIN_DEFAULT_PASSWORD || generateSecurePassword();
+      const systemAdminPassword = env.SYSTEMADMIN_DEFAULT_PASSWORD || generateSecurePassword();
       const hashedPassword = await bcrypt.hash(systemAdminPassword, 10);
       await storage.createManagedUser({
         email: "systemadmin@example.com",
@@ -371,7 +371,7 @@ export async function seedAdminUser() {
         isActive: true,
         lastActiveAt: null,
       });
-      if (process.env.SYSTEMADMIN_DEFAULT_PASSWORD) {
+      if (env.SYSTEMADMIN_DEFAULT_PASSWORD) {
         console.log("Systemadmin user created (username: systemadmin, password from SYSTEMADMIN_DEFAULT_PASSWORD env var)");
       } else {
         console.log("Systemadmin user created (username: systemadmin, password auto-generated). Change immediately or set SYSTEMADMIN_DEFAULT_PASSWORD env var.");

@@ -1,3 +1,33 @@
+// portal.ts already re-exports from ./auth, so omit ./auth here to avoid duplicate User/UserRole exports.
+// sm2.ts aliases (e.g. Sm2Customer as Customer) conflict with portal names — exclude the ambiguous aliases.
 export * from "./portal";
-export * from "./sm2";
-export * from "./auth";
+export {
+  sm2Users, sm2Customers, sm2Horses, sm2Stables, sm2Boxes, sm2Items, sm2ItemPrices,
+  sm2LiveryAgreements, sm2BillingElements, sm2Invoices, sm2AppSettings,
+  sm2AgreementDocuments, sm2AuditLogs, sm2InvoiceValidations,
+  sm2HorseOwnership, sm2HorseMovements,
+  type Sm2User, type InsertSm2User,
+  type Sm2Customer, type InsertSm2Customer,
+  type Sm2Horse, type InsertSm2Horse,
+  type Sm2Stable, type InsertSm2Stable,
+  type Sm2Box, type InsertSm2Box,
+  type Sm2Item, type InsertSm2Item,
+  type Sm2ItemPrice, type InsertSm2ItemPrice,
+  type Sm2LiveryAgreement, type InsertSm2LiveryAgreement,
+  type Sm2BillingElement, type InsertSm2BillingElement,
+  type Sm2Invoice, type InsertSm2Invoice,
+  type Sm2AgreementDocument, type InsertSm2AgreementDocument,
+  type Sm2AuditLog, type InsertSm2AuditLog,
+  type Sm2InvoiceValidation, type InsertSm2InvoiceValidation,
+  type Sm2HorseOwnership, type InsertSm2HorseOwnership,
+  type Sm2HorseMovement, type InsertSm2HorseMovement,
+  insertSm2UserSchema, insertSm2CustomerSchema, insertSm2HorseSchema,
+  insertSm2StableSchema, insertSm2BoxSchema, insertSm2ItemSchema,
+  insertSm2ItemPriceSchema, insertSm2LiveryAgreementSchema,
+  insertSm2BillingElementSchema, insertSm2InvoiceSchema,
+  insertSm2AgreementDocumentSchema, insertSm2AuditLogSchema,
+  insertSm2InvoiceValidationSchema, insertSm2HorseOwnershipSchema,
+  insertSm2HorseMovementSchema,
+  VALID_ROLES, INVOICE_STATUSES, type InvoiceStatus,
+  sm2InvoiceStatusEnum,
+} from "./sm2";

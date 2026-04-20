@@ -352,6 +352,26 @@ export default function CustomerDBPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const [isDragging, setIsDragging] = useState(false);
+
+  const isAcceptedImportFile = (file: File) => {
+    const name = file.name.toLowerCase();
+    return name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv");
+  };
+
+  const handleDropzoneDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!isAcceptedImportFile(file)) {
+      toast({ title: "Unsupported file", description: "Please drop a .xlsx, .xls, or .csv file.", variant: "destructive" });
+      return;
+    }
+    previewMutation.mutate(file);
+  };
+
   const handleImportSubmit = () => {
     const hasAnyMapping = Object.values(columnMapping).some(v => !!v);
     if (!hasAnyMapping) {
@@ -940,10 +960,17 @@ export default function CustomerDBPage() {
 
           {importStep === "upload" && (
             <div className="space-y-4 py-4">
-              <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-3">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center space-y-3 transition-colors ${isDragging ? "border-primary bg-primary/5" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+                onDrop={handleDropzoneDrop}
+                data-testid="dropzone-import-file"
+              >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium">Click to select an Excel file</p>
+                  <p className="text-sm font-medium">Drag & drop a file here, or click to browse</p>
                   <p className="text-xs text-muted-foreground mt-1">Supported: .xlsx, .xls, .csv (max 10MB)</p>
                 </div>
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={previewMutation.isPending} data-testid="button-select-file">

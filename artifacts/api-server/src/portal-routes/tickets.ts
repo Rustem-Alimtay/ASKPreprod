@@ -8,6 +8,8 @@ import { isAdmin } from "./helpers";
 import { type ManagedUser, type Ticket, tickets, itSupportSubcategories, digitalTransformationSubcategories } from "@workspace/db";
 import { z } from "zod";
 import { sendTicketCreatedNotification, sendTicketStatusChangedNotification, sendTicketCommentNotification } from "../email";
+import { asyncHandler } from "../middleware/asyncHandler";
+import { HttpError } from "../middleware/httpError";
 
 async function resolveAssignedEmail(assignedTo: string | null | undefined): Promise<string | null> {
   if (!assignedTo) return null;
@@ -60,40 +62,25 @@ export async function registerTicketRoutes(app: Express, _httpServer: Server) {
   seedHelpCenterContent().catch(console.error);
 
   // Get FAQ entries
-  app.get("/api/help/faq", isAuthenticated, async (_req, res) => {
-    try {
-      const entries = await storage.getAllFaqEntries();
-      res.json(entries);
-    } catch (error) {
-      console.error("Error fetching FAQ entries:", error);
-      res.status(500).json({ message: "Failed to fetch FAQ entries" });
-    }
-  });
+  app.get("/api/help/faq", isAuthenticated, asyncHandler(async (_req, res) => {
+    const entries = await storage.getAllFaqEntries();
+    res.json(entries);
+  }));
 
   // Get user manuals
-  app.get("/api/help/manuals", isAuthenticated, async (_req, res) => {
-    try {
-      const manuals = await storage.getAllUserManuals();
-      res.json(manuals);
-    } catch (error) {
-      console.error("Error fetching user manuals:", error);
-      res.status(500).json({ message: "Failed to fetch user manuals" });
-    }
-  });
+  app.get("/api/help/manuals", isAuthenticated, asyncHandler(async (_req, res) => {
+    const manuals = await storage.getAllUserManuals();
+    res.json(manuals);
+  }));
 
   // Get user manual by ID
-  app.get("/api/help/manuals/:id", isAuthenticated, async (req, res) => {
-    try {
-      const manual = await storage.getUserManual(req.params.id);
-      if (!manual) {
-        return res.status(404).json({ message: "Manual not found" });
-      }
-      res.json(manual);
-    } catch (error) {
-      console.error("Error fetching user manual:", error);
-      res.status(500).json({ message: "Failed to fetch user manual" });
+  app.get("/api/help/manuals/:id", isAuthenticated, asyncHandler(async (req, res) => {
+    const manual = await storage.getUserManual(req.params.id);
+    if (!manual) {
+      throw HttpError.notFound("Manual not found");
     }
-  });
+    res.json(manual);
+  }));
 
   // ===== TICKET MANAGEMENT =====
 
@@ -115,241 +102,199 @@ export async function registerTicketRoutes(app: Express, _httpServer: Server) {
     }
   });
 
-  app.post("/api/tickets", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const parsed = createTicketSchema.safeParse(req.body);
-      
-      if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.errors[0].message });
-      }
+  app.post("/api/tickets", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const parsed = { data: createTicketSchema.parse(req.body) } as const;
 
-      const ticket = await storage.createTicket({
-        ...parsed.data,
-        userId: user.id,
-        userEmail: user.email,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
-        status: "new",
-      });
+    const ticket = await storage.createTicket({
+      ...parsed.data,
+      userId: user.id,
+      userEmail: user.email,
+      userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+      status: "new",
+    });
 
-      await storage.createAuditLog({
-        action: "ticket_created",
-        category: "support",
-        userId: user.id,
-        userEmail: user.email,
-        details: { ticketId: ticket.id, trackingId: ticket.trackingId, subject: ticket.subject },
-        ipAddress: req.ip || req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-        status: "success",
-      });
+    await storage.createAuditLog({
+      action: "ticket_created",
+      category: "support",
+      userId: user.id,
+      userEmail: user.email,
+      details: { ticketId: ticket.id, trackingId: ticket.trackingId, subject: ticket.subject },
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      status: "success",
+    });
 
-      sendTicketCreatedNotification(ticket);
+    sendTicketCreatedNotification(ticket);
 
-      res.status(201).json(ticket);
-    } catch (error) {
-      console.error("Error creating ticket:", error);
-      res.status(500).json({ message: "Failed to create ticket" });
-    }
-  });
+    res.status(201).json(ticket);
+  }));
 
   // Get current user's tickets
-  app.get("/api/tickets/my", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const tickets = await storage.getTicketsByUser(user.id);
-      res.json(tickets);
-    } catch (error) {
-      console.error("Error fetching user tickets:", error);
-      res.status(500).json({ message: "Failed to fetch tickets" });
-    }
-  });
+  app.get("/api/tickets/my", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const tickets = await storage.getTicketsByUser(user.id);
+    res.json(tickets);
+  }));
 
-  app.get("/api/tickets/stats", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const isAdmin = user.role === "admin" || user.role === "superadmin";
-      const userFilter = isAdmin ? sql`1=1` : sql`user_id = ${user.id}`;
+  app.get("/api/tickets/stats", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const isAdmin = user.role === "admin" || user.role === "superadmin";
+    const userFilter = isAdmin ? sql`1=1` : sql`user_id = ${user.id}`;
 
-      const [counts] = await db.select({
-        total: sql<number>`count(*)::int`,
-        open: sql<number>`count(*) filter (where status in ('new','in_progress','under_review'))::int`,
-        resolved: sql<number>`count(*) filter (where status = 'resolved')::int`,
-        closed: sql<number>`count(*) filter (where status = 'closed')::int`,
-        statusNew: sql<number>`count(*) filter (where status = 'new')::int`,
-        statusInProgress: sql<number>`count(*) filter (where status = 'in_progress')::int`,
-        statusUnderReview: sql<number>`count(*) filter (where status = 'under_review')::int`,
-        itSupport: sql<number>`count(*) filter (where category = 'it_support')::int`,
-        digitalTransformation: sql<number>`count(*) filter (where category = 'digital_transformation')::int`,
-        critical: sql<number>`count(*) filter (where severity = 'critical' and status in ('new','in_progress','under_review'))::int`,
-        itOpen: sql<number>`count(*) filter (where category = 'it_support' and status in ('new','in_progress','under_review'))::int`,
-        itResolved: sql<number>`count(*) filter (where category = 'it_support' and status in ('resolved','closed'))::int`,
-        dtOpen: sql<number>`count(*) filter (where category = 'digital_transformation' and status in ('new','in_progress','under_review'))::int`,
-        dtResolved: sql<number>`count(*) filter (where category = 'digital_transformation' and status in ('resolved','closed'))::int`,
-        avgCloseMs: sql<number>`coalesce(avg(extract(epoch from (resolved_at - created_at)) * 1000) filter (where status in ('resolved','closed') and resolved_at is not null), 0)`,
-      }).from(tickets).where(userFilter);
+    const [counts] = await db.select({
+      total: sql<number>`count(*)::int`,
+      open: sql<number>`count(*) filter (where status in ('new','in_progress','under_review'))::int`,
+      resolved: sql<number>`count(*) filter (where status = 'resolved')::int`,
+      closed: sql<number>`count(*) filter (where status = 'closed')::int`,
+      statusNew: sql<number>`count(*) filter (where status = 'new')::int`,
+      statusInProgress: sql<number>`count(*) filter (where status = 'in_progress')::int`,
+      statusUnderReview: sql<number>`count(*) filter (where status = 'under_review')::int`,
+      itSupport: sql<number>`count(*) filter (where category = 'it_support')::int`,
+      digitalTransformation: sql<number>`count(*) filter (where category = 'digital_transformation')::int`,
+      critical: sql<number>`count(*) filter (where severity = 'critical' and status in ('new','in_progress','under_review'))::int`,
+      itOpen: sql<number>`count(*) filter (where category = 'it_support' and status in ('new','in_progress','under_review'))::int`,
+      itResolved: sql<number>`count(*) filter (where category = 'it_support' and status in ('resolved','closed'))::int`,
+      dtOpen: sql<number>`count(*) filter (where category = 'digital_transformation' and status in ('new','in_progress','under_review'))::int`,
+      dtResolved: sql<number>`count(*) filter (where category = 'digital_transformation' and status in ('resolved','closed'))::int`,
+      avgCloseMs: sql<number>`coalesce(avg(extract(epoch from (resolved_at - created_at)) * 1000) filter (where status in ('resolved','closed') and resolved_at is not null), 0)`,
+    }).from(tickets).where(userFilter);
 
-      const avgCloseTimeHours = Math.round((Number(counts.avgCloseMs) / (1000 * 60 * 60)) * 100) / 100;
-      const avgCloseTimeDays = Math.round((avgCloseTimeHours / 24) * 100) / 100;
+    const avgCloseTimeHours = Math.round((Number(counts.avgCloseMs) / (1000 * 60 * 60)) * 100) / 100;
+    const avgCloseTimeDays = Math.round((avgCloseTimeHours / 24) * 100) / 100;
 
-      const overdueRows = await db.select({ id: tickets.id }).from(tickets)
-        .where(sql`${userFilter} AND status in ('new','in_progress','under_review') AND (
-          (severity = 'critical' AND created_at < now() - interval '4 hours') OR
-          (severity = 'high' AND created_at < now() - interval '24 hours') OR
-          (severity = 'medium' AND created_at < now() - interval '48 hours') OR
-          (severity = 'low' AND created_at < now() - interval '72 hours')
-        )`);
+    const overdueRows = await db.select({ id: tickets.id }).from(tickets)
+      .where(sql`${userFilter} AND status in ('new','in_progress','under_review') AND (
+        (severity = 'critical' AND created_at < now() - interval '4 hours') OR
+        (severity = 'high' AND created_at < now() - interval '24 hours') OR
+        (severity = 'medium' AND created_at < now() - interval '48 hours') OR
+        (severity = 'low' AND created_at < now() - interval '72 hours')
+      )`);
 
-      const overdueTickets = overdueRows.map(r => r.id);
+    const overdueTickets = overdueRows.map(r => r.id);
 
-      const stats = {
-        total: counts.total,
-        open: counts.open,
+    const stats = {
+      total: counts.total,
+      open: counts.open,
+      resolved: counts.resolved,
+      closed: counts.closed,
+      itSupport: counts.itSupport,
+      digitalTransformation: counts.digitalTransformation,
+      critical: counts.critical,
+      byStatus: {
+        new: counts.statusNew,
+        in_progress: counts.statusInProgress,
+        under_review: counts.statusUnderReview,
         resolved: counts.resolved,
         closed: counts.closed,
-        itSupport: counts.itSupport,
-        digitalTransformation: counts.digitalTransformation,
-        critical: counts.critical,
-        byStatus: {
-          new: counts.statusNew,
-          in_progress: counts.statusInProgress,
-          under_review: counts.statusUnderReview,
-          resolved: counts.resolved,
-          closed: counts.closed,
+      },
+      avgCloseTimeHours,
+      avgCloseTimeDays,
+      byDepartmentLoad: {
+        it_support: {
+          total: counts.itSupport,
+          open: counts.itOpen,
+          resolved: counts.itResolved,
         },
-        avgCloseTimeHours,
-        avgCloseTimeDays,
-        byDepartmentLoad: {
-          it_support: {
-            total: counts.itSupport,
-            open: counts.itOpen,
-            resolved: counts.itResolved,
-          },
-          digital_transformation: {
-            total: counts.digitalTransformation,
-            open: counts.dtOpen,
-            resolved: counts.dtResolved,
-          },
+        digital_transformation: {
+          total: counts.digitalTransformation,
+          open: counts.dtOpen,
+          resolved: counts.dtResolved,
         },
-        slaBreaches: overdueTickets.length,
-        overdueTickets,
-      };
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching ticket stats:", error);
-      res.status(500).json({ message: "Failed to fetch stats" });
-    }
-  });
+      },
+      slaBreaches: overdueTickets.length,
+      overdueTickets,
+    };
+    res.json(stats);
+  }));
 
   // Get ticket by ID (user can only view their own, admin can view all)
-  app.get("/api/tickets/:id", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(req.params.id);
+  app.get("/api/tickets/:id", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(req.params.id);
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-
-      // Users can only view their own tickets, admins can view all
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "You can only view your own tickets" });
-      }
-
-      res.json(ticket);
-    } catch (error) {
-      console.error("Error fetching ticket:", error);
-      res.status(500).json({ message: "Failed to fetch ticket" });
+    if (!ticket) {
+      throw HttpError.notFound("Ticket not found");
     }
-  });
+
+    // Users can only view their own tickets, admins can view all
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("You can only view your own tickets");
+    }
+
+    res.json(ticket);
+  }));
 
   // Get ticket comments
-  app.get("/api/tickets/:id/comments", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(req.params.id);
+  app.get("/api/tickets/:id/comments", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(req.params.id);
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-
-      // Users can only view their own tickets, admins can view all
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "You can only view your own tickets" });
-      }
-
-      const comments = await storage.getTicketComments(req.params.id);
-      res.json(comments);
-    } catch (error) {
-      console.error("Error fetching ticket comments:", error);
-      res.status(500).json({ message: "Failed to fetch comments" });
+    if (!ticket) {
+      throw HttpError.notFound("Ticket not found");
     }
-  });
+
+    // Users can only view their own tickets, admins can view all
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("You can only view your own tickets");
+    }
+
+    const comments = await storage.getTicketComments(req.params.id);
+    res.json(comments);
+  }));
 
   // Add comment to ticket
   const addCommentSchema = z.object({
     message: z.string().min(1, "Message is required"),
   });
 
-  app.post("/api/tickets/:id/comments", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(req.params.id);
+  app.post("/api/tickets/:id/comments", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(req.params.id);
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-
-      // Users can only comment on their own tickets, admins can comment on all
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "You can only comment on your own tickets" });
-      }
-
-      const parsed = addCommentSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.errors[0].message });
-      }
-
-      const commentUserName = user.displayName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
-      const comment = await storage.createTicketComment({
-        ticketId: req.params.id,
-        userId: user.id,
-        userEmail: user.email,
-        userName: commentUserName,
-        isAdmin: user.role === "admin" || user.role === "superadmin",
-        message: parsed.data.message,
-      });
-
-      const assignedToEmail = await resolveAssignedEmail(ticket.assignedTo);
-      sendTicketCommentNotification({ ...ticket, assignedToEmail }, commentUserName, parsed.data.message);
-
-      res.status(201).json(comment);
-    } catch (error) {
-      console.error("Error adding comment:", error);
-      res.status(500).json({ message: "Failed to add comment" });
+    if (!ticket) {
+      throw HttpError.notFound("Ticket not found");
     }
-  });
+
+    // Users can only comment on their own tickets, admins can comment on all
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("You can only comment on your own tickets");
+    }
+
+    const parsed = { data: addCommentSchema.parse(req.body) } as const;
+
+    const commentUserName = user.displayName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+    const comment = await storage.createTicketComment({
+      ticketId: req.params.id,
+      userId: user.id,
+      userEmail: user.email,
+      userName: commentUserName,
+      isAdmin: user.role === "admin" || user.role === "superadmin",
+      message: parsed.data.message,
+    });
+
+    const assignedToEmail = await resolveAssignedEmail(ticket.assignedTo);
+    sendTicketCommentNotification({ ...ticket, assignedToEmail }, commentUserName, parsed.data.message);
+
+    res.status(201).json(comment);
+  }));
 
   // ===== ADMIN TICKET MANAGEMENT =====
 
-  app.get("/api/admin/tickets", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const isAdmin = user.role === "admin" || user.role === "superadmin";
-      const limit = parseInt(req.query.limit as string) || 50;
-      const offset = parseInt(req.query.offset as string) || 0;
-      const status = req.query.status as string | undefined;
-      const category = req.query.category as string | undefined;
+  app.get("/api/admin/tickets", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const isAdmin = user.role === "admin" || user.role === "superadmin";
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const status = req.query.status as string | undefined;
+    const category = req.query.category as string | undefined;
 
-      const result = await storage.getAllTickets({
-        limit, offset, status, category,
-        userId: isAdmin ? undefined : user.id,
-      });
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching all tickets:", error);
-      res.status(500).json({ message: "Failed to fetch tickets" });
-    }
-  });
+    const result = await storage.getAllTickets({
+      limit, offset, status, category,
+      userId: isAdmin ? undefined : user.id,
+    });
+    res.json(result);
+  }));
 
   // Update ticket (admin: status/assignee/severity/category; user: subject/description when status=new)
   const updateTicketSchema = z.object({
@@ -362,103 +307,90 @@ export async function registerTicketRoutes(app: Express, _httpServer: Server) {
     description: z.string().min(10, "Description must be at least 10 characters").optional(),
   });
 
-  app.patch("/api/admin/tickets/:id", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const isAdmin = user.role === "admin" || user.role === "superadmin";
-      const ticket = await storage.getTicket(req.params.id);
+  app.patch("/api/admin/tickets/:id", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const isAdmin = user.role === "admin" || user.role === "superadmin";
+    const ticket = await storage.getTicket(req.params.id);
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-
-      if (!isAdmin && ticket.userId !== user.id) {
-        return res.status(403).json({ message: "You can only update your own tickets" });
-      }
-
-      const parsed = updateTicketSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.errors[0].message });
-      }
-
-      if (!isAdmin) {
-        const adminOnlyFields = ['status', 'assignedTo', 'assignedToName', 'severity', 'category'] as const;
-        const hasAdminField = adminOnlyFields.some(f => parsed.data[f] !== undefined);
-        if (hasAdminField) {
-          return res.status(403).json({ message: "Only admins can change status, assignment, severity, or category" });
-        }
-        if ((parsed.data.subject || parsed.data.description) && ticket.status !== "new") {
-          return res.status(403).json({ message: "You can only edit subject/description while the ticket is in 'new' status" });
-        }
-      }
-
-      if (parsed.data.status) {
-        if (ticket.status === "closed" && parsed.data.status !== "closed") {
-          return res.status(400).json({ message: "Cannot reopen a closed ticket" });
-        }
-      }
-
-      const updateData: Partial<Ticket> & typeof parsed.data = { ...parsed.data };
-
-      if (parsed.data.category && parsed.data.category !== ticket.category) {
-        updateData.subcategory = null;
-      }
-
-      if (parsed.data.status === "resolved" && ticket.status !== "resolved") {
-        updateData.resolvedAt = new Date();
-      }
-      if (parsed.data.status === "closed" && ticket.status !== "closed") {
-        updateData.closedAt = new Date();
-      }
-
-      const updated = await storage.updateTicket(req.params.id, updateData);
-
-      await storage.createAuditLog({
-        action: "ticket_updated",
-        category: "support",
-        userId: user.id,
-        userEmail: user.email,
-        details: { ticketId: ticket.id, trackingId: ticket.trackingId, changes: parsed.data },
-        ipAddress: req.ip || req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-        status: "success",
-      });
-
-      if (parsed.data.status && parsed.data.status !== ticket.status) {
-        const changedByName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
-        const assignedEmail = await resolveAssignedEmail(updated.assignedTo);
-        sendTicketStatusChangedNotification({
-          ...updated,
-          userEmail: ticket.userEmail,
-          userName: ticket.userName,
-          assignedToEmail: assignedEmail,
-        }, ticket.status, parsed.data.status, changedByName);
-      }
-
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating ticket:", error);
-      res.status(500).json({ message: "Failed to update ticket" });
+    if (!ticket) {
+      throw HttpError.notFound("Ticket not found");
     }
-  });
+
+    if (!isAdmin && ticket.userId !== user.id) {
+      throw HttpError.forbidden("You can only update your own tickets");
+    }
+
+    const parsed = { data: updateTicketSchema.parse(req.body) } as const;
+
+    if (!isAdmin) {
+      const adminOnlyFields = ['status', 'assignedTo', 'assignedToName', 'severity', 'category'] as const;
+      const hasAdminField = adminOnlyFields.some(f => parsed.data[f] !== undefined);
+      if (hasAdminField) {
+        throw HttpError.forbidden("Only admins can change status, assignment, severity, or category");
+      }
+      if ((parsed.data.subject || parsed.data.description) && ticket.status !== "new") {
+        throw HttpError.forbidden("You can only edit subject/description while the ticket is in 'new' status");
+      }
+    }
+
+    if (parsed.data.status) {
+      if (ticket.status === "closed" && parsed.data.status !== "closed") {
+        throw HttpError.badRequest("Cannot reopen a closed ticket");
+      }
+    }
+
+    const updateData: Partial<Ticket> & typeof parsed.data = { ...parsed.data };
+
+    if (parsed.data.category && parsed.data.category !== ticket.category) {
+      updateData.subcategory = null;
+    }
+
+    if (parsed.data.status === "resolved" && ticket.status !== "resolved") {
+      updateData.resolvedAt = new Date();
+    }
+    if (parsed.data.status === "closed" && ticket.status !== "closed") {
+      updateData.closedAt = new Date();
+    }
+
+    const updated = await storage.updateTicket(req.params.id, updateData);
+
+    await storage.createAuditLog({
+      action: "ticket_updated",
+      category: "support",
+      userId: user.id,
+      userEmail: user.email,
+      details: { ticketId: ticket.id, trackingId: ticket.trackingId, changes: parsed.data },
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      status: "success",
+    });
+
+    if (parsed.data.status && parsed.data.status !== ticket.status) {
+      const changedByName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+      const assignedEmail = await resolveAssignedEmail(updated.assignedTo);
+      sendTicketStatusChangedNotification({
+        ...updated,
+        userEmail: ticket.userEmail,
+        userName: ticket.userName,
+        assignedToEmail: assignedEmail,
+      }, ticket.status, parsed.data.status, changedByName);
+    }
+
+    res.json(updated);
+  }));
 
   // ===== TICKET ATTACHMENTS =====
 
-  app.get("/api/tickets/:id/attachments", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(req.params.id);
-      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      const attachments = await storage.getTicketAttachments(req.params.id);
-      res.json(attachments.map(a => ({ id: a.id, ticketId: a.ticketId, filename: a.filename, fileType: a.fileType, fileSize: a.fileSize, uploadedAt: a.uploadedAt })));
-    } catch (error) {
-      console.error("Error fetching ticket attachments:", error);
-      res.status(500).json({ message: "Failed to fetch attachments" });
+  app.get("/api/tickets/:id/attachments", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(req.params.id);
+    if (!ticket) throw HttpError.notFound("Ticket not found");
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("Access denied");
     }
-  });
+    const attachments = await storage.getTicketAttachments(req.params.id);
+    res.json(attachments.map(a => ({ id: a.id, ticketId: a.ticketId, filename: a.filename, fileType: a.fileType, fileSize: a.fileSize, uploadedAt: a.uploadedAt })));
+  }));
 
   const uploadAttachmentSchema = z.object({
     attachments: z.array(z.object({
@@ -469,130 +401,107 @@ export async function registerTicketRoutes(app: Express, _httpServer: Server) {
     })).min(1).max(5),
   });
 
-  app.post("/api/tickets/:id/attachments", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(req.params.id);
-      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const parsed = uploadAttachmentSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.errors[0].message });
-      }
-
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain", "text/csv"];
-
-      const existingAttachments = await storage.getTicketAttachments(req.params.id);
-      const maxPerTicket = 10;
-      if (existingAttachments.length + parsed.data.attachments.length > maxPerTicket) {
-        return res.status(400).json({ message: `Maximum ${maxPerTicket} attachments per ticket. Currently ${existingAttachments.length} attached.` });
-      }
-
-      const maxFileBytes = 10 * 1024 * 1024;
-      const created = [];
-      for (const att of parsed.data.attachments) {
-        if (!allowedTypes.includes(att.fileType)) {
-          return res.status(400).json({ message: `File type not allowed: ${att.fileType}` });
-        }
-        const base64Part = att.fileData.includes(",") ? att.fileData.split(",")[1] : att.fileData;
-        const actualBytes = Buffer.from(base64Part, "base64").length;
-        if (actualBytes > maxFileBytes) {
-          return res.status(400).json({ message: `File "${att.filename}" exceeds 10MB limit (actual size: ${(actualBytes / (1024 * 1024)).toFixed(1)}MB)` });
-        }
-        const attachment = await storage.createTicketAttachment({
-          ticketId: req.params.id,
-          filename: att.filename,
-          fileType: att.fileType,
-          fileSize: actualBytes,
-          fileData: att.fileData,
-        });
-        created.push({ id: attachment.id, ticketId: attachment.ticketId, filename: attachment.filename, fileType: attachment.fileType, fileSize: attachment.fileSize, uploadedAt: attachment.uploadedAt });
-      }
-      res.status(201).json(created);
-    } catch (error) {
-      console.error("Error uploading ticket attachments:", error);
-      res.status(500).json({ message: "Failed to upload attachments" });
+  app.post("/api/tickets/:id/attachments", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(req.params.id);
+    if (!ticket) throw HttpError.notFound("Ticket not found");
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("Access denied");
     }
-  });
 
-  app.get("/api/ticket-attachments/:id/download", isAuthenticated, async (req, res) => {
-    try {
-      const att = await storage.getTicketAttachmentById(req.params.id);
-      if (!att) return res.status(404).json({ message: "Attachment not found" });
+    const parsed = { data: uploadAttachmentSchema.parse(req.body) } as const;
 
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(att.ticketId);
-      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain", "text/csv"];
 
-      const base64Data = att.fileData.includes(",") ? att.fileData.split(",")[1] : att.fileData;
-      const buffer = Buffer.from(base64Data, "base64");
-      res.setHeader("Content-Type", att.fileType);
-      res.setHeader("Content-Disposition", `attachment; filename="${att.filename}"`);
-      res.setHeader("Content-Length", buffer.length.toString());
-      res.send(buffer);
-    } catch (error) {
-      console.error("Error downloading ticket attachment:", error);
-      res.status(500).json({ message: "Failed to download attachment" });
+    const existingAttachments = await storage.getTicketAttachments(req.params.id);
+    const maxPerTicket = 10;
+    if (existingAttachments.length + parsed.data.attachments.length > maxPerTicket) {
+      return res.status(400).json({ message: `Maximum ${maxPerTicket} attachments per ticket. Currently ${existingAttachments.length} attached.` });
     }
-  });
 
-  app.delete("/api/ticket-attachments/:id", isAuthenticated, async (req, res) => {
-    try {
-      const att = await storage.getTicketAttachmentById(req.params.id);
-      if (!att) return res.status(404).json({ message: "Attachment not found" });
-
-      const user = (req as any).managedUser as ManagedUser;
-      const ticket = await storage.getTicket(att.ticketId);
-      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "Access denied" });
+    const maxFileBytes = 10 * 1024 * 1024;
+    const created = [];
+    for (const att of parsed.data.attachments) {
+      if (!allowedTypes.includes(att.fileType)) {
+        return res.status(400).json({ message: `File type not allowed: ${att.fileType}` });
       }
-
-      await storage.deleteTicketAttachment(req.params.id);
-      res.json({ message: "Attachment deleted" });
-    } catch (error) {
-      console.error("Error deleting ticket attachment:", error);
-      res.status(500).json({ message: "Failed to delete attachment" });
+      const base64Part = att.fileData.includes(",") ? att.fileData.split(",")[1] : att.fileData;
+      const actualBytes = Buffer.from(base64Part, "base64").length;
+      if (actualBytes > maxFileBytes) {
+        return res.status(400).json({ message: `File "${att.filename}" exceeds 10MB limit (actual size: ${(actualBytes / (1024 * 1024)).toFixed(1)}MB)` });
+      }
+      const attachment = await storage.createTicketAttachment({
+        ticketId: req.params.id,
+        filename: att.filename,
+        fileType: att.fileType,
+        fileSize: actualBytes,
+        fileData: att.fileData,
+      });
+      created.push({ id: attachment.id, ticketId: attachment.ticketId, filename: attachment.filename, fileType: attachment.fileType, fileSize: attachment.fileSize, uploadedAt: attachment.uploadedAt });
     }
-  });
+    res.status(201).json(created);
+  }));
+
+  app.get("/api/ticket-attachments/:id/download", isAuthenticated, asyncHandler(async (req, res) => {
+    const att = await storage.getTicketAttachmentById(req.params.id);
+    if (!att) throw HttpError.notFound("Attachment not found");
+
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(att.ticketId);
+    if (!ticket) throw HttpError.notFound("Ticket not found");
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("Access denied");
+    }
+
+    const base64Data = att.fileData.includes(",") ? att.fileData.split(",")[1] : att.fileData;
+    const buffer = Buffer.from(base64Data, "base64");
+    res.setHeader("Content-Type", att.fileType);
+    res.setHeader("Content-Disposition", `attachment; filename="${att.filename}"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.send(buffer);
+  }));
+
+  app.delete("/api/ticket-attachments/:id", isAuthenticated, asyncHandler(async (req, res) => {
+    const att = await storage.getTicketAttachmentById(req.params.id);
+    if (!att) throw HttpError.notFound("Attachment not found");
+
+    const user = (req as any).managedUser as ManagedUser;
+    const ticket = await storage.getTicket(att.ticketId);
+    if (!ticket) throw HttpError.notFound("Ticket not found");
+    if (ticket.userId !== user.id && user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("Access denied");
+    }
+
+    await storage.deleteTicketAttachment(req.params.id);
+    res.json({ message: "Attachment deleted" });
+  }));
 
   // Delete ticket (admin only)
-  app.delete("/api/admin/tickets/:id", isAuthenticated, async (req, res) => {
-    try {
-      const user = (req as any).managedUser as ManagedUser;
-      if (user.role !== "admin" && user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only admins can delete tickets" });
-      }
-
-      const ticket = await storage.getTicket(req.params.id);
-      
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-
-      await storage.deleteTicket(req.params.id);
-
-      await storage.createAuditLog({
-        action: "ticket_deleted",
-        category: "support",
-        userId: user.id,
-        userEmail: user.email,
-        details: { ticketId: ticket.id, trackingId: ticket.trackingId, subject: ticket.subject },
-        ipAddress: req.ip || req.socket.remoteAddress,
-        userAgent: req.headers["user-agent"],
-        status: "success",
-      });
-
-      res.json({ message: "Ticket deleted" });
-    } catch (error) {
-      console.error("Error deleting ticket:", error);
-      res.status(500).json({ message: "Failed to delete ticket" });
+  app.delete("/api/admin/tickets/:id", isAuthenticated, asyncHandler(async (req, res) => {
+    const user = (req as any).managedUser as ManagedUser;
+    if (user.role !== "admin" && user.role !== "superadmin") {
+      throw HttpError.forbidden("Only admins can delete tickets");
     }
-  });
+
+    const ticket = await storage.getTicket(req.params.id);
+      
+    if (!ticket) {
+      throw HttpError.notFound("Ticket not found");
+    }
+
+    await storage.deleteTicket(req.params.id);
+
+    await storage.createAuditLog({
+      action: "ticket_deleted",
+      category: "support",
+      userId: user.id,
+      userEmail: user.email,
+      details: { ticketId: ticket.id, trackingId: ticket.trackingId, subject: ticket.subject },
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      status: "success",
+    });
+
+    res.json({ message: "Ticket deleted" });
+  }));
 }

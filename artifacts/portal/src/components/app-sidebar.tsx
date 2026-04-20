@@ -2,27 +2,20 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { resolveIcon } from "@/lib/icon-resolver";
-import { 
-  LayoutDashboard, 
-  Shield, 
-  LogOut, 
+import {
+  Shield,
+  LogOut,
   Ticket,
   Pin,
   PinOff,
-  Calendar,
-  Settings,
-  ChevronDown,
-  LayoutGrid,
   Target,
   CircleDot,
   Home,
   Warehouse,
-  DollarSign,
-  ShoppingCart,
-  Package,
-  CreditCard,
   Fence,
   Loader2,
+  ChevronDown,
+  ShoppingCart,
   ClipboardCheck,
 } from "lucide-react";
 import {
@@ -45,24 +38,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ExternalService, AllowedSubmodules } from "@shared";
-import { CreateSpaceDialog } from "@/components/create-space-dialog";
+import type { ExternalService } from "@shared";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-
-const secondaryNavItems = [
-  {
-    title: "Users Profile",
-    url: "/settings",
-    icon: resolveIcon("UserCircle"),
-  },
-  {
-    title: "Settings",
-    url: "/system-settings",
-    icon: Settings,
-    adminOnly: true,
-  },
-];
+import { Fragment, useState } from "react";
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -94,15 +72,6 @@ export function AppSidebar() {
   const filteredServices = hasPageRestrictionsForFilter
     ? servicesByAccess?.filter((s) => s.url && allowedPagesRaw!.some(p => s.url === p || s.url!.startsWith(p + "/") || p.startsWith(s.url! + "/")))
     : servicesByAccess;
-  const isSuperAdmin = user?.role === "superadmin";
-
-  const canAccessSubmodule = (serviceKey: string, submoduleKey: string): boolean => {
-    if (isSuperAdmin) return true;
-    const allowed = (user as any)?.allowedSubmodules as AllowedSubmodules | null | undefined;
-    if (!allowed || !allowed[serviceKey]) return true;
-    return allowed[serviceKey].includes(submoduleKey);
-  };
-
   const canAccessPage = (path: string): boolean => {
     if (!hasPageRestrictionsForFilter) return true;
     return allowedPagesRaw!.some(p => path === p || path.startsWith(p + "/"));
@@ -144,7 +113,7 @@ export function AppSidebar() {
     <Sidebar className="bg-sidebar border-r border-sidebar-border">
       <SidebarHeader className="px-3 py-3">
         <div className="flex items-center justify-between gap-2">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
+          <Link href="/intranet" className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary flex-shrink-0">
               <span className="text-sm font-bold text-primary-foreground">U</span>
             </div>
@@ -170,32 +139,60 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location === "/dashboard" || location === "/"}
-                  className="h-9 px-3 rounded-md"
-                  data-testid="nav-item-dashboard"
-                  tooltip="Dashboard"
-                >
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span className="text-sm">Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {filteredServices?.map((service) => {
                 const IconComponent = resolveIcon(service.icon || "");
                 const isActive = location === service.url || 
                   (!!service.url && location.startsWith(service.url));
 
-                if (service.url === "/erp") {
+                const serviceSlug = service.name.toLowerCase().replace(/[()&]/g, '').replace(/\s+/g, '-');
+                const serviceUrl = service.url || "#";
+
+                if (serviceUrl === "/applications/customer-db") {
                   return (
-                    <Collapsible key={service.id} defaultOpen={location.startsWith("/erp")} className="group/collapsible">
+                    <Fragment key={service.id}>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          className="h-9 px-3 rounded-md"
+                          data-testid={`nav-item-${serviceSlug}`}
+                          tooltip={service.name}
+                        >
+                          <Link href={serviceUrl}>
+                            <IconComponent className="h-4 w-4" />
+                            <span className="text-sm">{service.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.startsWith("/stable-master")}
+                          className="h-9 px-3 rounded-md"
+                          data-testid="nav-item-stable-master"
+                          tooltip="Stable Master"
+                        >
+                          <Link href="/stable-master">
+                            <Fence className="h-4 w-4" />
+                            <span className="text-sm">Stable Master</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </Fragment>
+                  );
+                }
+
+                if (serviceUrl === "/erp") {
+                  return (
+                    <Collapsible
+                      key={service.id}
+                      defaultOpen={location.startsWith("/erp") || location === "/my-approvals"}
+                      className="group/collapsible"
+                    >
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton
-                            isActive={location.startsWith("/erp")}
+                            isActive={location.startsWith("/erp") || location === "/my-approvals"}
                             className="h-9 px-3 rounded-md"
                             data-testid="nav-item-erp"
                             tooltip="ERP"
@@ -207,120 +204,34 @@ export function AppSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {canAccessSubmodule("erp", "finance") && (
                             <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location === "/erp/finance"} data-testid="nav-sub-erp-finance">
-                                <Link href="/erp/finance">
-                                  <DollarSign className="h-3.5 w-3.5" />
-                                  <span>Finance</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            )}
-                            {canAccessSubmodule("erp", "procurement") && (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location.startsWith("/erp/procurement")} data-testid="nav-sub-erp-procurement">
-                                <Link href="/erp/procurement">
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={location.startsWith("/erp/procurement/requisitions")}
+                                data-testid="nav-sub-erp-requisitions"
+                              >
+                                <Link href="/erp/procurement/requisitions">
                                   <ShoppingCart className="h-3.5 w-3.5" />
-                                  <span>Procurement</span>
+                                  <span>Requisitions</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
-                            )}
-                            {canAccessSubmodule("erp", "inventory") && (
                             <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location === "/erp/inventory"} data-testid="nav-sub-erp-inventory">
-                                <Link href="/erp/inventory">
-                                  <Package className="h-3.5 w-3.5" />
-                                  <span>Inventory</span>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={location === "/my-approvals"}
+                                data-testid="nav-sub-my-approvals"
+                              >
+                                <Link href="/my-approvals">
+                                  <ClipboardCheck className="h-3.5 w-3.5" />
+                                  <span>My Approvals</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
-                            )}
-                            {isAdmin && canAccessSubmodule("erp", "payments") && (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location === "/erp/payments"} data-testid="nav-sub-erp-payments">
-                                <Link href="/erp/payments">
-                                  <CreditCard className="h-3.5 w-3.5" />
-                                  <span>Payments</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            )}
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       </SidebarMenuItem>
                     </Collapsible>
-                  );
-                }
-
-                if (service.url === "/projects") {
-                  return (
-                    <Collapsible key={service.id} defaultOpen={location.startsWith("/projects")} className="group/collapsible">
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            isActive={location.startsWith("/projects")}
-                            className="h-9 px-3 rounded-md"
-                            data-testid="nav-item-projects"
-                            tooltip="Projects"
-                          >
-                            <IconComponent className="h-4 w-4" />
-                            <span className="text-sm">{service.name}</span>
-                            <div className="ml-auto flex items-center gap-1">
-                              <CreateSpaceDialog />
-                              <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                            </div>
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {canAccessSubmodule("projects", "monday") && (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location === "/projects/monday"} data-testid="nav-sub-projects-monday">
-                                <Link href="/projects/monday">
-                                  <LayoutGrid className="h-3.5 w-3.5" />
-                                  <span>Monday</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            )}
-                            {canAccessSubmodule("projects", "tuesday") && (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={location === "/projects/tuesday"} data-testid="nav-sub-projects-tuesday">
-                                <Link href="/projects/tuesday">
-                                  <Calendar className="h-3.5 w-3.5" />
-                                  <span>Tuesday</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            )}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  );
-                }
-
-                const serviceSlug = service.name.toLowerCase().replace(/[()&]/g, '').replace(/\s+/g, '-');
-                const serviceUrl = service.url || "#";
-
-                if (serviceUrl === "/applications/customer-db") {
-                  return (
-                    <SidebarMenuItem key={service.id}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        className="h-9 px-3 rounded-md"
-                        data-testid={`nav-item-${serviceSlug}`}
-                        tooltip={service.name}
-                      >
-                        <Link href={serviceUrl}>
-                          <IconComponent className="h-4 w-4" />
-                          <span className="text-sm">{service.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
                   );
                 }
 
@@ -360,30 +271,6 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-            Workflow
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location === "/my-approvals"}
-                  className="h-9 px-3 rounded-md"
-                  data-testid="nav-item-my-approvals"
-                  tooltip="My Approvals"
-                >
-                  <Link href="/my-approvals">
-                    <ClipboardCheck className="h-4 w-4" />
-                    <span className="text-sm">My Approvals</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -428,58 +315,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-            Stable Master
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.startsWith("/stable-master")}
-                  className="h-9 px-3 rounded-md"
-                  data-testid="nav-item-stable-master"
-                  tooltip="Stable Master"
-                >
-                  <Link href="/stable-master">
-                    <Fence className="h-4 w-4" />
-                    <span className="text-sm">Stable Master</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-auto pt-4">
-          <SidebarGroupLabel className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-            System
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {secondaryNavItems
-                .filter((item) => !item.adminOnly || isAdmin)
-                .filter((item) => canAccessPage(item.url))
-                .map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    className="h-9 px-3 rounded-md"
-                    data-testid={`nav-item-${item.title.toLowerCase()}`}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="text-sm">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border px-3 py-2.5">
         {authLoading ? (
@@ -494,10 +329,9 @@ export function AppSidebar() {
           </div>
         ) : user ? (
           <div className="flex items-center justify-between gap-2">
-            <Link 
-              href="/settings" 
-              className="flex items-center gap-2.5 flex-1 rounded-md p-1 -m-1 hover-elevate cursor-pointer"
-              data-testid="link-user-profile"
+            <div
+              className="flex items-center gap-2.5 flex-1 rounded-md p-1 -m-1"
+              data-testid="user-profile"
             >
               <Avatar className="h-8 w-8 bg-primary/10 flex-shrink-0">
                 <AvatarFallback className="text-xs bg-primary/20 text-primary">{getInitials()}</AvatarFallback>
@@ -508,7 +342,7 @@ export function AppSidebar() {
                   <span className="text-[11px] text-muted-foreground">{getJobTitle()}</span>
                 </div>
               )}
-            </Link>
+            </div>
             {state === "expanded" && (
               <Button
                 variant="ghost"

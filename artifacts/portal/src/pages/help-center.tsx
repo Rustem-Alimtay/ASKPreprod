@@ -177,22 +177,16 @@ export default function HelpCenterPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
-                <Link href="/dashboard">
-                  <Button variant="outline" className="w-full justify-start" data-testid="button-goto-dashboard">
+                <Link href="/intranet">
+                  <Button variant="outline" className="w-full justify-start" data-testid="button-goto-intranet">
                     <Database className="mr-2 h-4 w-4" />
-                    Go to Dashboard
+                    Go to Portal
                   </Button>
                 </Link>
                 <Link href="/tickets">
                   <Button variant="outline" className="w-full justify-start" data-testid="button-view-tickets">
                     <Ticket className="mr-2 h-4 w-4" />
                     View My Tickets
-                  </Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline" className="w-full justify-start" data-testid="button-goto-settings">
-                    <Users className="mr-2 h-4 w-4" />
-                    Account Settings
                   </Button>
                 </Link>
                 <Link href="/tickets/new">

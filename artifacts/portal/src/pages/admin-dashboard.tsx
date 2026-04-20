@@ -62,7 +62,7 @@ interface UserFormData {
   firstName: string;
   lastName: string;
   employeeCode: string;
-  role: "superadmin" | "admin" | "finance" | "procurement" | "livery" | "others";
+  role: "superadmin" | "admin" | "others";
 }
 
 interface EmployeeLookupResult {
@@ -506,7 +506,7 @@ function AdminDashboard() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       employeeCode: user.employeeCode || "",
-      role: (user.role as "superadmin" | "admin" | "finance" | "procurement" | "livery" | "others") || "others",
+      role: (user.role as "superadmin" | "admin" | "others") || "others",
     });
     setFormMode("edit");
     setDialogOpen(true);
@@ -584,10 +584,6 @@ function AdminDashboard() {
         return "destructive";
       case "admin":
         return "default";
-      case "finance":
-      case "procurement":
-      case "livery":
-        return "secondary";
       default:
         return "outline";
     }
@@ -620,8 +616,8 @@ function AdminDashboard() {
         <Shield className="h-16 w-16 text-destructive" />
         <h1 className="text-2xl font-semibold">Access Denied</h1>
         <p className="text-muted-foreground">You need admin privileges to access this page.</p>
-        <Button onClick={() => setLocation("/netsuite")} data-testid="button-go-back">
-          Go to Dashboard
+        <Button onClick={() => setLocation("/intranet")} data-testid="button-go-back">
+          Go to Portal
         </Button>
       </div>
     );
@@ -1049,7 +1045,7 @@ function AdminDashboard() {
               <Select
                 value={formData.role}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, role: value as "superadmin" | "admin" | "finance" | "procurement" | "livery" | "others" })
+                  setFormData({ ...formData, role: value as "superadmin" | "admin" | "others" })
                 }
               >
                 <SelectTrigger data-testid="select-user-role">
@@ -1058,9 +1054,6 @@ function AdminDashboard() {
                 <SelectContent>
                   <SelectItem value="superadmin">Superadmin</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="procurement">Procurement</SelectItem>
-                  <SelectItem value="livery">Livery</SelectItem>
                   <SelectItem value="others">Others</SelectItem>
                 </SelectContent>
               </Select>

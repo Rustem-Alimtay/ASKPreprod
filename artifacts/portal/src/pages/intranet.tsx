@@ -70,7 +70,7 @@ import {
   Save
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import type { Ticket as TicketType, TicketComment, TicketAttachment, Requisition } from "@shared";
+import type { Ticket as TicketType, TicketComment, TicketAttachment } from "@shared";
 import { format, formatDistanceToNow } from "date-fns";
 import { statusConfig, severityConfig, categoryConfig } from "@/lib/ticket-config";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -199,15 +199,6 @@ export default function IntranetPage() {
 
   const { data: usersList = [] } = useQuery<{ id: string; username: string; firstName: string; lastName: string }[]>({
     queryKey: ["/api/users/list"],
-  });
-
-  const { data: requisitions = [], isLoading: requisitionsLoading } = useQuery<Requisition[]>({
-    queryKey: ["/api/requisitions"],
-    queryFn: async () => {
-      const res = await fetch("/api/requisitions", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch requisitions");
-      return res.json();
-    },
   });
 
   type CreateTicketResult = { ticket: TicketType; attachmentsFailed: boolean };
@@ -372,22 +363,11 @@ export default function IntranetPage() {
       )
     : allTickets;
 
-  const filteredRequisitions = activeTab === "all"
-    ? (debouncedSearch
-        ? requisitions.filter(r =>
-            r.requestTitle.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            r.id.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            (r.requestedBy || "").toLowerCase().includes(debouncedSearch.toLowerCase())
-          )
-        : requisitions)
-    : [];
-
-  const allItems = [...filteredTickets, ...(activeTab === "all" ? filteredRequisitions : [])];
+  const allItems = filteredTickets;
   const totalPages = Math.max(1, Math.ceil(allItems.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedItems = allItems.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
-  const paginatedTickets = paginatedItems.filter(item => 'trackingId' in item) as typeof filteredTickets;
-  const paginatedRequisitions = paginatedItems.filter(item => 'requestTitle' in item) as typeof filteredRequisitions;
+  const paginatedTickets = paginatedItems;
 
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, statusFilter, categoryFilter, activeTab]);
 
@@ -843,27 +823,6 @@ export default function IntranetPage() {
           </CardContent>
         </Card>
 
-        <Link href="/intranet/requisitions">
-          <Card
-            className="bg-gradient-to-br from-amber-600 to-orange-600 text-white border-0 cursor-pointer hover-elevate h-full"
-            data-testid="card-requisition-arf"
-          >
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base">Requisition ARF</h3>
-                  <p className="text-amber-100 text-xs">Approval Request Forms</p>
-                </div>
-              </div>
-              <p className="text-amber-100 text-xs">
-                Submit & track procurement requisitions, approvals, and purchase orders
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       <Card>
@@ -874,7 +833,6 @@ export default function IntranetPage() {
                 <TabsTrigger value="all" data-testid="tab-all">All Requests</TabsTrigger>
                 <TabsTrigger value="it_support" data-testid="tab-it">IT Support</TabsTrigger>
                 <TabsTrigger value="digital_transformation" data-testid="tab-dt">Digital Transformation</TabsTrigger>
-                <TabsTrigger value="requisition_arf" data-testid="tab-arf">Requisition ARF</TabsTrigger>
                 <TabsTrigger value="analytics" data-testid="tab-analytics">
                   <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
                   Analytics
@@ -908,92 +866,7 @@ export default function IntranetPage() {
               </div>
             </div>
 
-            {activeTab === "requisition_arf" ? (
-              <div className="p-4">
-                {requisitionsLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : requisitions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <FileText className="mb-3 h-12 w-12 text-muted-foreground" />
-                    <h2 className="mb-1 text-lg font-semibold">No requisitions yet</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Create a new requisition to get started</p>
-                    <Link href="/intranet/requisitions/new?from=/intranet">
-                      <Button data-testid="button-new-arf-empty">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Requisition
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex justify-end">
-                      <Link href="/intranet/requisitions/new?from=/intranet">
-                        <Button size="sm" data-testid="button-new-arf">
-                          <Plus className="h-4 w-4 mr-2" />
-                          New Requisition
-                        </Button>
-                      </Link>
-                    </div>
-                    <div className="rounded-lg border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-24">ID</TableHead>
-                            <TableHead>Title</TableHead>
-                            <TableHead className="w-32">Department</TableHead>
-                            <TableHead className="w-32">Requested By</TableHead>
-                            <TableHead className="w-28 text-right">Cost (AED)</TableHead>
-                            <TableHead className="w-28">Status</TableHead>
-                            <TableHead className="w-28">Date</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {requisitions.map((req) => (
-                            <TableRow
-                              key={req.id}
-                              className="cursor-pointer"
-                              data-testid={`row-arf-${req.id}`}
-                            >
-                              <TableCell>
-                                <Link href={`/intranet/requisitions/${req.id}`}>
-                                  <span className="font-mono text-xs text-primary hover:underline">{req.id.slice(0, 8).toUpperCase()}</span>
-                                </Link>
-                              </TableCell>
-                              <TableCell>
-                                <Link href={`/intranet/requisitions/${req.id}`}>
-                                  <span className="font-medium text-sm hover:underline">{req.requestTitle}</span>
-                                </Link>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{req.department}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{req.requestedBy}</TableCell>
-                              <TableCell className="text-right text-sm font-medium">
-                                {req.estimatedCostAed ? Number(req.estimatedCostAed).toLocaleString() : "—"}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    req.status === "PO Created" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0 text-[10px]" :
-                                    req.status === "Rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 text-[10px]" :
-                                    req.status === "Awaiting Approval" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0 text-[10px]" :
-                                    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 text-[10px]"
-                                  }
-                                >
-                                  {req.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{req.dateOfRequest}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : activeTab === "analytics" ? (
+            {activeTab === "analytics" ? (
               <div className="p-4 space-y-4">
                 <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                   <Card data-testid="card-avg-resolution">
@@ -1168,7 +1041,7 @@ export default function IntranetPage() {
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-              ) : filteredTickets.length === 0 && (activeTab !== "all" || filteredRequisitions.length === 0) ? (
+              ) : filteredTickets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Ticket className="mb-3 h-12 w-12 text-muted-foreground" />
                   <h2 className="mb-1 text-lg font-semibold">No requests found</h2>
@@ -1257,56 +1130,6 @@ export default function IntranetPage() {
                           </TableRow>
                         );
                       })}
-                      {activeTab === "all" && paginatedRequisitions.map((req) => (
-                        <TableRow
-                          key={`arf-${req.id}`}
-                          className="cursor-pointer"
-                          data-testid={`row-arf-all-${req.id}`}
-                        >
-                          <TableCell>
-                            <Link href={`/intranet/requisitions/${req.id}`}>
-                              <span className="font-mono text-xs text-primary hover:underline">{req.id.slice(0, 8).toUpperCase()}</span>
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <Link href={`/intranet/requisitions/${req.id}`}>
-                              <span className="font-medium text-sm hover:underline">{req.requestTitle}</span>
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0 text-[10px]">
-                              Requisition ARF
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">—</span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                req.status === "PO Created" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0 text-[10px]" :
-                                req.status === "Rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 text-[10px]" :
-                                req.status === "Awaiting Approval" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0 text-[10px]" :
-                                "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 text-[10px]"
-                              }
-                            >
-                              {req.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">{req.requestedBy || "—"}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">{req.dateOfRequest || "—"}</span>
-                          </TableCell>
-                          <TableCell>
-                            <Link href={`/intranet/requisitions/${req.id}`}>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      ))}
                     </TableBody>
                   </Table>
                   {totalPages > 1 && (

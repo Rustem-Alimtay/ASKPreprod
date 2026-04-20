@@ -24,7 +24,7 @@ function LoginPage() {
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/auth/user"], data);
       queryClient.setQueryData(["/api/me"], data);
-      setLocation("/dashboard");
+      setLocation("/intranet");
     },
     onError: (error: Error) => {
       toast({

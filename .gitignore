@@ -1,49 +1,105 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# ───────── Dependencies ─────────
+node_modules/
+.pnpm-store/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/install-state.gz
 
-# compiled output
-dist
-tmp
-out-tsc
+# ───────── Build output ─────────
+dist/
+build/
+out/
+out-tsc/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+
+# ───────── Vite ─────────
+.vite/
+*.local
+vite.config.*.timestamp-*
+
+# ───────── TypeScript ─────────
 *.tsbuildinfo
-.expo
-.expo-shared
+.tsbuildinfo
 
-# dependencies
-node_modules
+# ───────── Env / secrets ─────────
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# ───────── Drizzle ─────────
+drizzle/meta/
+.drizzle/
 
-# IDE - VSCode
+# ───────── Logs ─────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ───────── Runtime / coverage ─────────
+pids/
+*.pid
+*.seed
+*.pid.lock
+coverage/
+.nyc_output/
+*.lcov
+
+# ───────── Caches ─────────
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.rollup.cache/
+.swc/
+
+# ───────── Uploads / user data ─────────
+uploads/
+tmp/
+
+# ───────── IDE / editors ─────────
+.idea/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+*.launch
+.c9/
 
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
+# ───────── OS ─────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
+# ───────── Replit ─────────
+.replit
+.upm/
+.breakpoints
+.config/
+replit.nix
+
+# ───────── Agent / local tooling ─────────
+.claude/
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
-
-# Replit
-.cache/
-.local/

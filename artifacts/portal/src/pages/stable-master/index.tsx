@@ -21,8 +21,6 @@ import InvoicesPage from "./pages/invoices";
 import ReportsPage from "./pages/reports";
 import HorseMovementsPage from "./pages/horse-movements";
 import AdminUsersPage from "./pages/admin-users";
-import AdminSettingsPage from "./pages/admin-settings";
-import AdminAuditLogsPage from "./pages/admin-audit-logs";
 import NotFoundPage from "./pages/not-found";
 
 function AdminRoute({ component: Component, userRole }: { component: React.ComponentType; userRole: string }) {
@@ -50,8 +48,6 @@ function SmRoutes({ userRole }: { userRole: string }) {
       <Route path="/reports/livery" component={ReportsPage} />
       <Route path="/stable-management/horse-movements" component={HorseMovementsPage} />
       <Route path="/admin/users">{() => <AdminRoute component={AdminUsersPage} userRole={userRole} />}</Route>
-      <Route path="/admin/settings">{() => <AdminRoute component={AdminSettingsPage} userRole={userRole} />}</Route>
-      <Route path="/admin/audit-logs">{() => <AdminRoute component={AdminAuditLogsPage} userRole={userRole} />}</Route>
       <Route component={NotFoundPage} />
     </Switch>
   );
@@ -82,10 +78,6 @@ export default function StableMasterModule() {
     return null;
   }
 
-  const handleLogout = () => {
-    window.location.href = "/dashboard";
-  };
-
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -94,7 +86,7 @@ export default function StableMasterModule() {
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
       <div className="flex h-screen w-full">
-        <AppSidebar onLogout={handleLogout} userRole={userRole} />
+        <AppSidebar userRole={userRole} />
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background px-4">
             <SidebarTrigger />

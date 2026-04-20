@@ -3,6 +3,7 @@ import type { ManagedUser } from "@workspace/db";
 import { passwordSchema } from "@workspace/db";
 import { z } from "zod";
 import ExcelJS from "exceljs";
+import { HttpError } from "../middleware/httpError";
 
 export { passwordSchema };
 
@@ -11,37 +12,33 @@ export const allowedSpreadsheetMimes = [
   "text/csv",
 ];
 
-export const isAdmin: RequestHandler = async (req, res, next) => {
+export const isAdmin: RequestHandler = (req, _res, next) => {
   const managedUser = (req as any).managedUser as ManagedUser;
-  if (!managedUser) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+  if (!managedUser) return next(HttpError.unauthorized());
   if (managedUser.role !== "admin" && managedUser.role !== "superadmin") {
-    return res.status(403).json({ message: "Forbidden: Admin access required" });
+    return next(HttpError.forbidden("Admin access required"));
   }
   next();
 };
 
-export const isSuperAdmin: RequestHandler = async (req, res, next) => {
+export const isSuperAdmin: RequestHandler = (req, _res, next) => {
   const managedUser = (req as any).managedUser as ManagedUser;
-  if (!managedUser) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+  if (!managedUser) return next(HttpError.unauthorized());
   if (managedUser.role !== "superadmin") {
-    return res.status(403).json({ message: "Forbidden: Superadmin access required" });
+    return next(HttpError.forbidden("Superadmin access required"));
   }
   next();
 };
 
 export const checkSubmoduleAccess = (serviceKey: string, submoduleKey: string): RequestHandler => {
-  return (req, res, next) => {
+  return (req, _res, next) => {
     const managedUser = (req as any).managedUser as ManagedUser;
-    if (!managedUser) return res.status(401).json({ message: "Unauthorized" });
+    if (!managedUser) return next(HttpError.unauthorized());
     if (managedUser.role === "superadmin") return next();
     const allowed = managedUser.allowedSubmodules as Record<string, string[]> | null;
     if (!allowed || !allowed[serviceKey]) return next();
     if (allowed[serviceKey].includes(submoduleKey)) return next();
-    return res.status(403).json({ message: "Access denied: submodule restricted" });
+    return next(HttpError.forbidden("Access denied: submodule restricted"));
   };
 };
 

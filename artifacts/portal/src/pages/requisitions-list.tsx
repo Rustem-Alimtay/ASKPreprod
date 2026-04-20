@@ -1,258 +1,190 @@
-import { OtherModulesSection } from "@/components/other-modules-section";
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Plus, Search, Filter, FileDown } from "lucide-react";
-import type { Requisition } from "@shared";
-import { useAuth } from "@/hooks/use-auth";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, FileText, Loader2, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
+import type { Requisition } from "@shared";
 
-const statusOptions = [
-  "Submitted",
-  "Pending Line Manager",
-  "Pending Purchasing Review",
-  "Pending Budget Owner",
-  "Pending Final Approval",
-  "Ready for Purchase",
-  "PO Created",
-  "Rejected",
-];
+function statusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  if (status === "Rejected") return "destructive";
+  if (status === "PO Created" || status === "Ready for Purchase") return "default";
+  return "secondary";
+}
 
-function getStatusBadgeClass(status: string) {
-  switch (status) {
-    case "Submitted": return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0";
-    case "Pending Line Manager": return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0";
-    case "Pending Purchasing Review": return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-0";
-    case "Pending Budget Owner": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0";
-    case "Pending Final Approval": return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-0";
-    case "Ready for Purchase": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0";
-    case "PO Created": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0";
-    case "Rejected": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0";
-    case "Awaiting Approval": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0";
-    default: return "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-0";
-  }
+function exportRequisitionPdf(r: Requisition) {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text("Acquisition Request Form (ARF)", 14, 20);
+  doc.setFontSize(10);
+  let y = 35;
+  const line = (label: string, value: string | number | null | undefined) => {
+    doc.setFont("helvetica", "bold");
+    doc.text(`${label}:`, 14, y);
+    doc.setFont("helvetica", "normal");
+    const str = value == null || value === "" ? "—" : String(value);
+    const split = doc.splitTextToSize(str, 130);
+    doc.text(split, 60, y);
+    y += split.length * 6 + 2;
+  };
+  line("ID", r.id.slice(0, 8).toUpperCase());
+  line("Title", r.requestTitle);
+  line("Status", r.status);
+  line("Department", r.department);
+  line("Requested By", r.requestedBy);
+  line("Date of Request", r.dateOfRequest);
+  line("Required By", r.requiredByDate);
+  line("Estimated Cost", `AED ${Number(r.estimatedCostAed).toLocaleString()}`);
+  line("Budget Owner", r.budgetOwnerName);
+  line("Vendor", r.vendorName);
+  line("Description", r.description);
+  line("Justification", r.justification);
+  doc.save(`ARF_${r.id.slice(0, 8)}.pdf`);
 }
 
 export default function RequisitionsListPage() {
-  const [location, navigate] = useLocation();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const [location] = useLocation();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [status, setStatus] = useState("all");
+
   const isIntranet = location.startsWith("/intranet");
   const basePath = isIntranet ? "/intranet/requisitions" : "/erp/procurement/requisitions";
-  const backPath = isIntranet ? "/intranet" : "/erp/procurement";
 
-  const { data: requisitions = [], isLoading } = useQuery<Requisition[]>({
-    queryKey: ["/api/requisitions", search, statusFilter],
-    queryFn: () => {
+  const { data = [], isLoading } = useQuery<Requisition[]>({
+    queryKey: ["/api/requisitions", search, status],
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
-      return fetch(`/api/requisitions?${params.toString()}`, { credentials: "include" }).then(r => r.json());
+      if (status !== "all") params.set("status", status);
+      const res = await fetch(`/api/requisitions?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch requisitions");
+      return res.json();
     },
   });
 
-  const formatCost = (cost: number) => {
-    return new Intl.NumberFormat("en-AE", { style: "decimal", minimumFractionDigits: 2 }).format(cost / 100);
-  };
-
-  const generatePdf = (req: Requisition) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const contentWidth = pageWidth - margin * 2;
-    let y = 20;
-
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Approval Request Form (ARF)", pageWidth / 2, y, { align: "center" });
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Request ID: ${req.id.slice(0, 8).toUpperCase()}`, pageWidth / 2, y, { align: "center" });
-    y += 6;
-    doc.text(`Status: ${req.status}`, pageWidth / 2, y, { align: "center" });
-    y += 12;
-
-    doc.setDrawColor(200);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
-
-    const addSection = (title: string, fields: [string, string][]) => {
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(title, margin, y);
-      y += 7;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      fields.forEach(([label, value]) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.setFont("helvetica", "bold");
-        doc.text(`${label}:`, margin, y);
-        doc.setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(value || "—", contentWidth - 50);
-        doc.text(lines, margin + 50, y);
-        y += lines.length * 5 + 3;
-      });
-      y += 5;
-    };
-
-    addSection("1. Request Information", [
-      ["Title", req.requestTitle],
-      ["Department", req.department],
-      ["Requested By", req.requestedBy],
-      ["Position", req.position || "—"],
-      ["Date", req.date],
-      ["Date of Request", req.dateOfRequest],
-    ]);
-
-    addSection("2. Description of Request", [
-      ["Description", req.description],
-    ]);
-
-    addSection("3. Justification / Business Need", [
-      ["Justification", req.justification],
-    ]);
-
-    addSection("4. Budget Details", [
-      ["Estimated Cost (AED)", formatCost(req.estimatedCostAed)],
-      ["Budget Line / Account Code", req.budgetLineAccountCode || "—"],
-      ["Is this Budgeted?", req.isBudgeted ? "Yes" : "No"],
-      ["Vendor Name", req.vendorName || "—"],
-    ]);
-
-    addSection("5. Timeline", [
-      ["Required By Date", req.requiredByDate],
-      ["Project Start Date", req.projectStartDate || "—"],
-    ]);
-
-    doc.save(`ARF-${req.id.slice(0, 8).toUpperCase()}.pdf`);
-  };
-
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(backPath)} data-testid="button-back-finance">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold font-outfit" data-testid="text-page-title">Requisitions</h1>
-            <p className="text-muted-foreground">Manage approval request forms</p>
-          </div>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold" data-testid="text-requisitions-title">Requisitions</h1>
+          <p className="text-muted-foreground">
+            Acquisition Request Forms (ARF) — create, track, approve
+          </p>
         </div>
-        <Button onClick={() => navigate(`${basePath}/new?from=${backPath}`)} data-testid="button-new-requisition">
-          <Plus className="h-4 w-4 mr-2" />
-          New Request
+        <Button asChild data-testid="button-new-requisition">
+          <Link href={`${basePath}/new`}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Requisition
+          </Link>
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by title, department, or requester..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-requisitions"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[220px]" data-testid="select-status-filter">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by status" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          placeholder="Search title, department, requester..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+          data-testid="input-search"
+        />
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="w-56" data-testid="select-status-filter">
+            <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {statusOptions.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
+            <SelectItem value="Pending Line Manager">Pending Line Manager</SelectItem>
+            <SelectItem value="Pending Purchasing Review">Pending Purchasing Review</SelectItem>
+            <SelectItem value="Pending Budget Owner">Pending Budget Owner</SelectItem>
+            <SelectItem value="Pending Final Approval">Pending Final Approval</SelectItem>
+            <SelectItem value="Ready for Purchase">Ready for Purchase</SelectItem>
+            <SelectItem value="PO Created">PO Created</SelectItem>
+            <SelectItem value="Rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="p-3 text-left font-medium text-muted-foreground">Request ID</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Request Title</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Department</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Requested By</th>
-                  <th className="p-3 text-right font-medium text-muted-foreground">Est. Cost (AED)</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Date of Request</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Required By</th>
-                  <th className="p-3 text-left font-medium text-muted-foreground">Workflow Stage</th>
-                  <th className="p-3 text-center font-medium text-muted-foreground">PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground">Loading...</td>
-                  </tr>
-                ) : requisitions.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground">No requisitions found</td>
-                  </tr>
-                ) : (
-                  requisitions.map((req) => (
-                    <tr
-                      key={req.id}
-                      className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={(e) => {
-                        if ((e.target as HTMLElement).closest("select, button")) return;
-                        navigate(`${basePath}/${req.id}`);
-                      }}
-                      data-testid={`row-requisition-${req.id}`}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : data.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+            <h2 className="text-lg font-semibold">No requisitions yet</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create your first requisition to get started.
+            </p>
+            <Button asChild>
+              <Link href={`${basePath}/new`}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Requisition
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-24">ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="w-40">Department</TableHead>
+                <TableHead className="w-40">Requested By</TableHead>
+                <TableHead className="w-36 text-right">Cost (AED)</TableHead>
+                <TableHead className="w-44">Status</TableHead>
+                <TableHead className="w-28">Date</TableHead>
+                <TableHead className="w-20"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((r) => (
+                <TableRow key={r.id} data-testid={`row-requisition-${r.id}`}>
+                  <TableCell>
+                    <Link href={`${basePath}/${r.id}`}>
+                      <span className="font-mono text-xs text-primary hover:underline">
+                        {r.id.slice(0, 8).toUpperCase()}
+                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`${basePath}/${r.id}`}>
+                      <span className="font-medium text-sm hover:underline">{r.requestTitle}</span>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.department}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.requestedBy}</TableCell>
+                  <TableCell className="text-right font-medium text-sm">
+                    {Number(r.estimatedCostAed).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{r.dateOfRequest}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => exportRequisitionPdf(r)}
+                      data-testid={`button-export-${r.id}`}
+                      title="Export ARF to PDF"
                     >
-                      <td className="p-3 font-mono text-xs" data-testid={`text-req-id-${req.id}`}>
-                        {req.id.slice(0, 8).toUpperCase()}
-                      </td>
-                      <td className="p-3 font-medium" data-testid={`text-req-title-${req.id}`}>{req.requestTitle}</td>
-                      <td className="p-3 text-muted-foreground">{req.department}</td>
-                      <td className="p-3 text-muted-foreground">{req.requestedBy}</td>
-                      <td className="p-3 text-right font-medium">{formatCost(req.estimatedCostAed)}</td>
-                      <td className="p-3 text-muted-foreground">{req.dateOfRequest}</td>
-                      <td className="p-3 text-muted-foreground">{req.requiredByDate}</td>
-                      <td className="p-3">
-                        <Badge className={`${getStatusBadgeClass(req.status)} text-[10px]`} data-testid={`badge-status-${req.id}`}>
-                          {req.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => generatePdf(req)}
-                          data-testid={`button-pdf-${req.id}`}
-                          title="Download PDF"
-                        >
-                          <FileDown className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-      <OtherModulesSection />
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }

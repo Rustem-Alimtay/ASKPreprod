@@ -1,4 +1,5 @@
 import sgMail from "@sendgrid/mail";
+import { env } from "./lib/env";
 
 let initialized = false;
 
@@ -9,12 +10,12 @@ const CATEGORY_EMAILS: Record<string, string> = {
   digital_transformation: "radhakrishnan@adec.ae",
   requisition_arf: "anas.aliyar@adec.ae",
 };
-const APP_URL = process.env.APP_URL || "https://aksportal.com";
+const APP_URL = env.APP_URL || "https://aksportal.com";
 
 function initSendGrid() {
   if (initialized) return;
 
-  const apiKey = process.env.SENDGRID_API_KEY;
+  const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     throw new Error(
       "SendGrid not configured. Set SENDGRID_API_KEY environment variable."
@@ -31,7 +32,7 @@ export async function sendEmail(options: {
   html: string;
 }) {
   initSendGrid();
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || ADMIN_EMAIL;
+  const fromEmail = env.SENDGRID_FROM_EMAIL || env.SMTP_USER || ADMIN_EMAIL;
 
   const recipients = Array.isArray(options.to) ? options.to.join(", ") : options.to;
   await sgMail.send({
@@ -44,7 +45,7 @@ export async function sendEmail(options: {
 }
 
 export function getFromEmail(): string {
-  return process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || "";
+  return env.SENDGRID_FROM_EMAIL || env.SMTP_USER || "";
 }
 
 function emailLayout(title: string, body: string): string {

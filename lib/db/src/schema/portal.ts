@@ -6,50 +6,26 @@ import { z } from "zod";
 export * from "./auth";
 
 // User roles enum
-export const userRoles = ["superadmin", "admin", "finance", "procurement", "livery", "others"] as const;
+export const userRoles = ["superadmin", "admin", "others"] as const;
 export type UserRole = typeof userRoles[number];
 
 // Submodule registry — defines all submodules for services that have them
 export const submoduleRegistry: Record<string, { key: string; label: string; path: string }[]> = {
   erp: [
-    { key: "finance", label: "Finance", path: "/erp/finance" },
-    { key: "procurement", label: "Procurement", path: "/erp/procurement" },
-    { key: "inventory", label: "Inventory", path: "/erp/inventory" },
-    { key: "payments", label: "Payments", path: "/erp/payments" },
-  ],
-  equestrian: [
-    { key: "stable-assets", label: "Stable Assets Manager", path: "/equestrian/stable-assets" },
-    { key: "stable-master", label: "Stable Master", path: "/equestrian/stable-master" },
-    { key: "stable-master-mvp", label: "Stable Master MVP", path: "/equestrian/stable-master-mvp" },
-  ],
-  projects: [
-    { key: "monday", label: "Monday", path: "/projects/monday" },
-    { key: "tuesday", label: "Tuesday", path: "/projects/tuesday" },
+    { key: "requisitions", label: "Requisitions", path: "/erp/procurement/requisitions" },
+    { key: "my-approvals", label: "My Approvals", path: "/my-approvals" },
   ],
 };
 
 export type AllowedSubmodules = Record<string, string[]>;
 
 export const pageRegistry: { key: string; label: string; path: string }[] = [
-  { key: "dashboard", label: "Dashboard", path: "/dashboard" },
+  { key: "intranet", label: "AKS Request Center", path: "/intranet" },
   { key: "erp", label: "ERP", path: "/erp" },
-  { key: "projects", label: "Projects", path: "/projects" },
-  { key: "hr", label: "HR", path: "/hr" },
-  { key: "livery", label: "Livery", path: "/livery" },
-  { key: "events", label: "Events", path: "/events" },
-  { key: "intranet", label: "Intranet", path: "/intranet" },
-  { key: "media-marketing", label: "Media & Marketing", path: "/media-marketing" },
-  { key: "legal", label: "Legal", path: "/legal" },
-  { key: "performance-kpi", label: "Performance KPI", path: "/performance-kpi" },
-  { key: "ops-fm", label: "Ops & FM", path: "/ops-fm" },
-  { key: "asset-lease", label: "Asset & Lease", path: "/asset-lease" },
-  { key: "business-units", label: "Business Units", path: "/business-units" },
-  { key: "other-systems", label: "Other Systems", path: "/other-systems" },
-  { key: "veterinary", label: "Veterinary", path: "/veterinary" },
+  { key: "customer-db", label: "Customer DB", path: "/applications/customer-db" },
+  { key: "stable-master", label: "Stable Master", path: "/stable-master" },
   { key: "help", label: "Help Center", path: "/help" },
   { key: "my-tickets", label: "My Tickets", path: "/my-tickets" },
-  { key: "customer-db", label: "Customer DB", path: "/applications/customer-db" },
-  { key: "settings", label: "Users Profile", path: "/settings" },
 ];
 
 // Extended user with roles (managed users for admin panel)

@@ -10,53 +10,53 @@ import { z } from "zod";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
+import { asyncHandler } from "../middleware/asyncHandler";
+import { HttpError } from "../middleware/httpError";
+import { env, isProd } from "../lib/env";
 
 export async function registerSsoRoutes(app: Express, _httpServer: Server) {
-  app.post("/api/admin/cleanup-all-data", isAuthenticated, isAdmin, async (req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(403).json({ message: "Data cleanup is disabled in production" });
+  app.post("/api/admin/cleanup-all-data", isAuthenticated, isAdmin, asyncHandler(async (req, res) => {
+    if (isProd) {
+      throw HttpError.forbidden("Data cleanup is disabled in production");
     }
 
     const { confirmation } = req.body;
     if (confirmation !== "DELETE_ALL_DATA") {
-      return res.status(400).json({ message: "Confirmation string required: DELETE_ALL_DATA" });
+      throw HttpError.badRequest("Confirmation string required: DELETE_ALL_DATA");
     }
 
-    try {
-      const user = (req as any).managedUser as ManagedUser;
+    
+    const user = (req as any).managedUser as ManagedUser;
 
-      await storage.createAuditLog({
-        action: "full_data_cleanup",
-        category: "admin",
-        userId: user.id,
-        userEmail: user.email,
-        details: { warning: "All data wiped" },
-        ipAddress: req.ip,
-        userAgent: req.headers["user-agent"] || null,
-        status: "success",
-      });
+    await storage.createAuditLog({
+      action: "full_data_cleanup",
+      category: "admin",
+      userId: user.id,
+      userEmail: user.email,
+      details: { warning: "All data wiped" },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"] || null,
+      status: "success",
+    });
 
-      await db.execute(sql`DELETE FROM project_assignments`);
-      await db.execute(sql`DELETE FROM project_comments`);
-      await db.execute(sql`DELETE FROM project_tags`);
-      await db.execute(sql`DELETE FROM projects`);
-      await db.execute(sql`DELETE FROM project_groups`);
-      await db.execute(sql`DELETE FROM sprints`);
-      await db.execute(sql`DELETE FROM ticket_comments`);
-      await db.execute(sql`DELETE FROM tickets`);
-      await db.execute(sql`DELETE FROM customer_profiles`);
-      await db.execute(sql`DELETE FROM customers`);
-      await db.execute(sql`DELETE FROM collaboration_blueprints`);
-      await db.execute(sql`DELETE FROM faq_entries`);
-      await db.execute(sql`DELETE FROM user_manuals`);
-      res.json({ success: true, message: "All data cleaned up" });
-    } catch (error) {
-      console.error("Error cleaning up data:", error);
-      res.status(500).json({ message: "Failed to clean up data" });
-    }
-  });
-  const ssoAllowedOrigins = process.env.SSO_ALLOWED_ORIGINS
-    ? process.env.SSO_ALLOWED_ORIGINS.split(",").map(s => s.trim())
+    await db.execute(sql`DELETE FROM project_assignments`);
+    await db.execute(sql`DELETE FROM project_comments`);
+    await db.execute(sql`DELETE FROM project_tags`);
+    await db.execute(sql`DELETE FROM projects`);
+    await db.execute(sql`DELETE FROM project_groups`);
+    await db.execute(sql`DELETE FROM sprints`);
+    await db.execute(sql`DELETE FROM ticket_comments`);
+    await db.execute(sql`DELETE FROM tickets`);
+    await db.execute(sql`DELETE FROM customer_profiles`);
+    await db.execute(sql`DELETE FROM customers`);
+    await db.execute(sql`DELETE FROM collaboration_blueprints`);
+    await db.execute(sql`DELETE FROM faq_entries`);
+    await db.execute(sql`DELETE FROM user_manuals`);
+    res.json({ success: true, message: "All data cleaned up" });
+  
+  }));
+  const ssoAllowedOrigins = env.SSO_ALLOWED_ORIGINS
+    ? env.SSO_ALLOWED_ORIGINS.split(",").map(s => s.trim())
     : ["https://stable-master.replit.app"];
 
   const ssoVerifyCors = cors({
@@ -94,13 +94,13 @@ export async function registerSsoRoutes(app: Express, _httpServer: Server) {
     },
   });
 
-  app.post("/api/sso/generate-token", isAuthenticated, ssoGenerateLimiter, async (req: any, res) => {
+  app.post("/api/sso/generate-token", isAuthenticated, ssoGenerateLimiter, asyncHandler(async (req, res) => {
     const clientIp = req.ip || req.socket?.remoteAddress || "unknown";
     try {
       const user = req.managedUser;
       if (!user) {
         await storage.createSsoAuditLog({ userId: req.session?.userId || "unknown", ip: clientIp, action: "generate-token", success: false, details: "User not found" });
-        return res.status(401).json({ message: "User not found" });
+        throw HttpError.unauthorized("User not found");
       }
       const isSuperOrAdmin = user.role === "superadmin" || user.role === "admin";
       if (!isSuperOrAdmin) {
@@ -110,13 +110,13 @@ export async function registerSsoRoutes(app: Express, _httpServer: Server) {
         );
         if (!hasAccess) {
           await storage.createSsoAuditLog({ userId: req.session.userId, ip: clientIp, action: "generate-token", success: false, details: "No access to equestrian module" });
-          return res.status(403).json({ message: "No access to equestrian module" });
+          throw HttpError.forbidden("No access to equestrian module");
         }
       }
       const token = crypto.randomBytes(64).toString("hex");
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
       await storage.createSsoToken(token, req.session.userId, expiresAt);
-      const stableMasterUrl = (process.env.STABLE_MASTER_URL || "https://stable-master.replit.app").replace(/\/+$/, "");
+      const stableMasterUrl = (env.STABLE_MASTER_URL || "https://stable-master.replit.app").replace(/\/+$/, "");
       const url = `${stableMasterUrl}/sso?token=${token}`;
       await storage.createSsoAuditLog({ userId: req.session.userId, ip: clientIp, action: "generate-token", success: true });
       res.json({ url });
@@ -124,31 +124,27 @@ export async function registerSsoRoutes(app: Express, _httpServer: Server) {
       try { await storage.createSsoAuditLog({ userId: req.session?.userId || "unknown", ip: clientIp, action: "generate-token", success: false, details: e.message }); } catch {}
       res.status(500).json({ message: e.message });
     }
-  });
+  }));
 
   const ssoVerifySchema = z.object({
     token: z.string().min(1, "Token is required"),
   });
 
   app.options("/api/sso/verify-token", ssoVerifyCors);
-  app.post("/api/sso/verify-token", ssoVerifyCors, ssoVerifyLimiter, async (req, res) => {
+  app.post("/api/sso/verify-token", ssoVerifyCors, ssoVerifyLimiter, asyncHandler(async (req, res) => {
     const clientIp = req.ip || req.socket?.remoteAddress || "unknown";
     try {
-      const parsed = ssoVerifySchema.safeParse(req.body);
-      if (!parsed.success) {
-        await storage.createSsoAuditLog({ userId: "unknown", ip: clientIp, action: "verify-token", success: false, details: "Token is required or invalid type" });
-        return res.status(400).json({ message: "Token is required" });
-      }
+      const parsed = { data: ssoVerifySchema.parse(req.body) } as const;
       const { token } = parsed.data;
       const result = await storage.validateAndConsumeSsoToken(token);
       if (!result) {
         await storage.createSsoAuditLog({ userId: "unknown", ip: clientIp, action: "verify-token", success: false, details: "Invalid, expired, or already used token" });
-        return res.status(401).json({ message: "Invalid, expired, or already used token" });
+        throw HttpError.unauthorized("Invalid, expired, or already used token");
       }
       const user = await storage.getManagedUser(result.userId);
       if (!user || !user.isActive) {
         await storage.createSsoAuditLog({ userId: result.userId, ip: clientIp, action: "verify-token", success: false, details: "User not found or inactive" });
-        return res.status(401).json({ message: "User not found or inactive" });
+        throw HttpError.unauthorized("User not found or inactive");
       }
       await storage.createSsoAuditLog({ userId: result.userId, ip: clientIp, action: "verify-token", success: true });
       // NOTE for Stable Master consumer: After successful verification, call
@@ -166,5 +162,5 @@ export async function registerSsoRoutes(app: Express, _httpServer: Server) {
       try { await storage.createSsoAuditLog({ userId: "unknown", ip: clientIp, action: "verify-token", success: false, details: e.message }); } catch {}
       res.status(500).json({ message: e.message });
     }
-  });
+  }));
 }

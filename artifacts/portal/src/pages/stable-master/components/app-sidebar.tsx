@@ -9,7 +9,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
   Receipt,
@@ -23,14 +22,11 @@ import {
   CreditCard,
   FileBarChart,
   BarChart3,
-  Settings,
   UserCog,
-  LogOut,
-  Shield,
   History,
   ArrowRightLeft,
+  ArrowLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Horseshoe } from "./icons/horseshoe";
 
 const navGroups = [
@@ -88,18 +84,15 @@ const navGroups = [
     adminOnly: true,
     items: [
       { title: "Users", url: "/admin/users", icon: UserCog },
-      { title: "Settings", url: "/admin/settings", icon: Settings },
-      { title: "Audit Logs", url: "/admin/audit-logs", icon: Shield },
     ],
   },
 ];
 
 interface AppSidebarProps {
-  onLogout: () => void;
   userRole: string;
 }
 
-export function AppSidebar({ onLogout, userRole }: AppSidebarProps) {
+export function AppSidebar({ userRole }: AppSidebarProps) {
   const [location] = useLocation();
 
   return (
@@ -136,22 +129,37 @@ export function AppSidebar({ onLogout, userRole }: AppSidebarProps) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                {group.label === "Administration" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <Link href="~/intranet" data-testid="link-nav-back-to-portal">
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back to Portal</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        {userRole !== "ADMIN" && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="~/intranet" data-testid="link-nav-back-to-portal">
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Back to Portal</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-foreground"
-          onClick={onLogout}
-          data-testid="button-logout"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   );
 }

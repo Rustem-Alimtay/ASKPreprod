@@ -1,3 +1,5 @@
+// Validate env FIRST, before any module that reads process.env at import time
+import { env, isDev } from "./lib/env";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -5,11 +7,10 @@ import rateLimit from "express-rate-limit";
 import { createServer } from "http";
 import { setupAuth, registerAuthRoutes, seedAdminUser } from "./portal-auth";
 import { registerAllRoutes } from "./portal-routes/index";
-import { seedExternalServices, seedSpacesAndProjects, seedDataSources } from "./seedServices";
+import { seedExternalServices, seedDataSources } from "./seedServices";
 import { storage } from "./storage";
 import { logger } from "./lib/logger";
-
-const isDev = process.env.NODE_ENV !== "production";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app: Express = express();
 export const httpServer = createServer(app);
@@ -78,6 +79,8 @@ const importRoutes = [
   "/api/sm2/items/import",
 ];
 app.post("/api/requisitions", largeJsonParser);
+app.post("/api/requisitions/:id/attachments", largeJsonParser);
+app.post("/api/requisitions/:id/quotations", largeJsonParser);
 app.post("/api/tickets/:id/attachments", largeJsonParser);
 app.post("/api/sm2/livery-agreements/:id/documents", largeJsonParser);
 importRoutes.forEach(route => app.post(route, largeJsonParser));
@@ -101,16 +104,17 @@ async function initializeApp() {
     setupAuth(app);
     registerAuthRoutes(app);
     await registerAllRoutes(app, httpServer);
+    // errorHandler must be registered LAST, after all routes
+    app.use(errorHandler);
     await seedAdminUser();
     await storage.initTicketSequence();
-    await seedExternalServices(storage);
-    await seedSpacesAndProjects(storage);
-    await seedDataSources(storage);
+    await seedExternalServices();
+    await seedDataSources();
     appReady = true;
     logger.info("Portal app initialized successfully");
   } catch (error) {
-    logger.error({ error }, "Error initializing portal app");
-    appReady = true;
+    logger.fatal({ error }, "Fatal error initializing portal app — refusing to start");
+    process.exit(1);
   }
 }
 
