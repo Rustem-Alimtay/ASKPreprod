@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Node
+**/node_modules
+**/dist
+**/.turbo
+**/.next
+**/build
+**/.cache
+
+# Логи и временные файлы
+**/*.log
+**/.DS_Store
+**/.env
+**/.env.*
+!**/.env.example
+
+# Редакторы
+.vscode
+.idea
+**/*.swp
+
+# Тесты и доки (не нужны в образе)
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/coverage
+**/README.md
+**/.github
+
+# Docker-файлы сами себе не нужны
+Dockerfile
+.dockerignore
