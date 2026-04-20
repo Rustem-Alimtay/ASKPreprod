@@ -12,7 +12,7 @@ WORKDIR /repo
 
 # Сначала копируем ТОЛЬКО манифесты — чтобы Docker закешировал pnpm install
 # и не переустанавливал зависимости при каждом изменении кода
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY artifacts/api-server/package.json artifacts/api-server/
 COPY artifacts/portal/package.json artifacts/portal/
 COPY lib/db/package.json lib/db/
