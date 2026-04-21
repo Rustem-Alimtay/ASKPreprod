@@ -43,7 +43,7 @@ export function setupAuth(app: Express) {
       cookie: {
         httpOnly: true,
         secure: isProd || isReplit,
-        sameSite: isReplit ? "none" as const : "lax" as const,
+        sameSite: (isProd || isReplit) ? "none" as const : "lax" as const,
         maxAge: sessionTtl,
       },
       proxy: true,
