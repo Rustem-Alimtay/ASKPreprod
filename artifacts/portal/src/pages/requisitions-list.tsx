@@ -48,12 +48,10 @@ function exportRequisitionPdf(r: Requisition) {
 }
 
 export default function RequisitionsListPage() {
-  const [location] = useLocation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
 
-  const isIntranet = location.startsWith("/intranet");
-  const basePath = isIntranet ? "/intranet/requisitions" : "/erp/procurement/requisitions";
+  const basePath = "/intranet/requisitions";
 
   const { data = [], isLoading } = useQuery<Requisition[]>({
     queryKey: ["/api/requisitions", search, status],

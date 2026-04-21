@@ -58,12 +58,10 @@ function stepIcon(decision: string) {
 export default function RequisitionDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const [location] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
-  const isIntranet = location.startsWith("/intranet");
-  const basePath = isIntranet ? "/intranet/requisitions" : "/erp/procurement/requisitions";
+  const basePath = "/intranet/requisitions";
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);

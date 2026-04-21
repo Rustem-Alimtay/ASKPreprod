@@ -14,9 +14,8 @@ import {
   Warehouse,
   Fence,
   Loader2,
-  ChevronDown,
-  ShoppingCart,
   ClipboardCheck,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,14 +26,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarHeader,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -182,59 +177,6 @@ export function AppSidebar() {
                   );
                 }
 
-                if (serviceUrl === "/erp") {
-                  return (
-                    <Collapsible
-                      key={service.id}
-                      defaultOpen={location.startsWith("/erp") || location === "/my-approvals"}
-                      className="group/collapsible"
-                    >
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            isActive={location.startsWith("/erp") || location === "/my-approvals"}
-                            className="h-9 px-3 rounded-md"
-                            data-testid="nav-item-erp"
-                            tooltip="ERP"
-                          >
-                            <IconComponent className="h-4 w-4" />
-                            <span className="text-sm">{service.name}</span>
-                            <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={location.startsWith("/erp/procurement/requisitions")}
-                                data-testid="nav-sub-erp-requisitions"
-                              >
-                                <Link href="/erp/procurement/requisitions">
-                                  <ShoppingCart className="h-3.5 w-3.5" />
-                                  <span>Requisitions</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={location === "/my-approvals"}
-                                data-testid="nav-sub-my-approvals"
-                              >
-                                <Link href="/my-approvals">
-                                  <ClipboardCheck className="h-3.5 w-3.5" />
-                                  <span>My Approvals</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  );
-                }
-
                 if (service.isExternal) {
                   return (
                     <SidebarMenuItem key={service.id}>
@@ -271,6 +213,20 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/my-approvals"}
+                  className="h-9 px-3 rounded-md"
+                  data-testid="nav-item-my-approvals"
+                  tooltip="My Approvals"
+                >
+                  <Link href="/my-approvals">
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span className="text-sm">My Approvals</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -307,6 +263,20 @@ export function AppSidebar() {
                     <Link href="/admin/tickets">
                       <Ticket className="h-4 w-4" />
                       <span className="text-sm">Ticket Management</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === "/admin/system-settings"}
+                    className="h-9 px-3 rounded-md"
+                    data-testid="nav-item-system-settings"
+                    tooltip="System Settings"
+                  >
+                    <Link href="/admin/system-settings">
+                      <Settings className="h-4 w-4" />
+                      <span className="text-sm">System Settings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

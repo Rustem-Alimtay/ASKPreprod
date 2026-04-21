@@ -5,6 +5,8 @@ import {
   auditLogs, type AuditLog, type InsertAuditLog,
   iconLibrary, type IconLibraryEntry, type InsertIconLibrary,
   departments, type Department, type InsertDepartment,
+  sectionTemplates, type SectionTemplate, type InsertSectionTemplate,
+  pageSections, type PageSection, type InsertPageSection, type PageSectionWithTemplate,
 } from "@workspace/db";
 import { db } from "@workspace/db";
 import { eq, sql, desc, and, ilike, or, asc } from "drizzle-orm";
@@ -206,6 +208,96 @@ export async function createIcon(icon: InsertIconLibrary): Promise<IconLibraryEn
 export async function deleteIcon(id: string): Promise<boolean> {
   const result = await db.delete(iconLibrary).where(eq(iconLibrary.id, id)).returning();
   return result.length > 0;
+}
+
+// ── Section Templates ────────────────────────────────────────────────────────
+
+export async function getAllSectionTemplates(): Promise<SectionTemplate[]> {
+  return await db.select().from(sectionTemplates).orderBy(asc(sectionTemplates.name));
+}
+
+export async function getSectionTemplate(id: string): Promise<SectionTemplate | undefined> {
+  const [tpl] = await db.select().from(sectionTemplates).where(eq(sectionTemplates.id, id));
+  return tpl;
+}
+
+export async function getSectionTemplateByType(sectionType: string): Promise<SectionTemplate | undefined> {
+  const [tpl] = await db.select().from(sectionTemplates).where(eq(sectionTemplates.sectionType, sectionType));
+  return tpl;
+}
+
+export async function createSectionTemplate(tpl: InsertSectionTemplate): Promise<SectionTemplate> {
+  const [created] = await db.insert(sectionTemplates).values(tpl).returning();
+  return created;
+}
+
+export async function updateSectionTemplate(
+  id: string,
+  data: Partial<InsertSectionTemplate>
+): Promise<SectionTemplate | undefined> {
+  const [updated] = await db
+    .update(sectionTemplates)
+    .set(data)
+    .where(eq(sectionTemplates.id, id))
+    .returning();
+  return updated;
+}
+
+export async function deleteSectionTemplate(id: string): Promise<boolean> {
+  const result = await db.delete(sectionTemplates).where(eq(sectionTemplates.id, id)).returning();
+  return result.length > 0;
+}
+
+// ── Page Sections ────────────────────────────────────────────────────────────
+
+export async function getPageSectionsByService(serviceId: string): Promise<PageSectionWithTemplate[]> {
+  const rows = await db
+    .select({ section: pageSections, template: sectionTemplates })
+    .from(pageSections)
+    .leftJoin(sectionTemplates, eq(pageSections.sectionTemplateId, sectionTemplates.id))
+    .where(eq(pageSections.serviceId, serviceId))
+    .orderBy(asc(pageSections.sortOrder));
+
+  return rows.map((row) => ({ ...row.section, template: row.template || null }));
+}
+
+export async function getPageSection(id: string): Promise<PageSection | undefined> {
+  const [section] = await db.select().from(pageSections).where(eq(pageSections.id, id));
+  return section;
+}
+
+export async function createPageSection(section: InsertPageSection): Promise<PageSection> {
+  const [created] = await db.insert(pageSections).values(section).returning();
+  return created;
+}
+
+export async function updatePageSection(
+  id: string,
+  data: Partial<InsertPageSection>
+): Promise<PageSection | undefined> {
+  const [updated] = await db
+    .update(pageSections)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(pageSections.id, id))
+    .returning();
+  return updated;
+}
+
+export async function deletePageSection(id: string): Promise<boolean> {
+  const result = await db.delete(pageSections).where(eq(pageSections.id, id)).returning();
+  return result.length > 0;
+}
+
+export async function reorderPageSections(serviceId: string, sectionIds: string[]): Promise<boolean> {
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < sectionIds.length; i++) {
+      await tx
+        .update(pageSections)
+        .set({ sortOrder: i, updatedAt: new Date() })
+        .where(and(eq(pageSections.id, sectionIds[i]), eq(pageSections.serviceId, serviceId)));
+    }
+  });
+  return true;
 }
 
 // ── User Services (access control) ──────────────────────────────────────────

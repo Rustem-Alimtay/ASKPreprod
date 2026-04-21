@@ -16,16 +16,6 @@ const defaultServices = [
     sortOrder: "2",
   },
   {
-    name: "ERP",
-    description: null,
-    url: "/erp",
-    icon: "DollarSign",
-    category: "finance",
-    isEnabled: true,
-    isExternal: false,
-    sortOrder: "5",
-  },
-  {
     name: "AKS Request Center",
     description: null,
     url: "/intranet",
@@ -106,14 +96,6 @@ const defaultServiceSections: ServiceSectionDef[] = [
     serviceUrl: "/business-units",
     sections: [
       { title: "Business Units Overview", icon: "Building2", sortOrder: 0, isEnabled: true, isExpandable: true, templateType: "cards_grid" },
-    ],
-  },
-  {
-    serviceUrl: "/erp",
-    sections: [
-      { title: "Hero Banner", icon: "DollarSign", sortOrder: 0, isEnabled: true, isExpandable: false, templateType: "hero_banner" },
-      { title: "Finance Modules", icon: "DollarSign", sortOrder: 1, isEnabled: true, isExpandable: true, templateType: "tabs" },
-      { title: "Other Finance Modules", icon: "CreditCard", sortOrder: 2, isEnabled: true, isExpandable: true, templateType: "cards_grid" },
     ],
   },
   {

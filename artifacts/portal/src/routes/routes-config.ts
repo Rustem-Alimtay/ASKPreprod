@@ -4,6 +4,7 @@ import { lazy, type ComponentType } from "react";
 // The <Suspense> boundary in App.tsx handles the loading fallback.
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminTicketsPage = lazy(() => import("@/pages/admin-tickets"));
+const SystemSettingsPage = lazy(() => import("@/pages/system-settings"));
 const HelpCenterPage = lazy(() => import("@/pages/help-center"));
 const MyTicketsPage = lazy(() => import("@/pages/my-tickets"));
 const IntranetPage = lazy(() => import("@/pages/intranet"));
@@ -24,16 +25,12 @@ export type RouteEntry =
 export const protectedRoutes: RouteEntry[] = [
   { kind: "redirect", path: "/", redirectTo: "/intranet" },
   { kind: "route", path: "/my-approvals", component: MyApprovalsPage },
-  { kind: "route", path: "/erp/procurement/requisitions/new", component: RequisitionNewPage },
-  { kind: "route", path: "/erp/procurement/requisitions/:id", component: RequisitionDetailPage },
-  { kind: "route", path: "/erp/procurement/requisitions", component: RequisitionsListPage },
-  { kind: "redirect", path: "/erp/procurement", redirectTo: "/erp/procurement/requisitions" },
-  { kind: "redirect", path: "/erp", redirectTo: "/erp/procurement/requisitions" },
   { kind: "route", path: "/intranet/requisitions/new", component: RequisitionNewPage },
   { kind: "route", path: "/intranet/requisitions/:id", component: RequisitionDetailPage },
   { kind: "route", path: "/intranet/requisitions", component: RequisitionsListPage },
   { kind: "route", path: "/admin", component: AdminDashboard },
   { kind: "route", path: "/admin/tickets", component: AdminTicketsPage },
+  { kind: "route", path: "/admin/system-settings", component: SystemSettingsPage },
   { kind: "route", path: "/help", component: HelpCenterPage },
   { kind: "route", path: "/tickets", component: MyTicketsPage },
   { kind: "route", path: "/tickets/new", component: MyTicketsPage },

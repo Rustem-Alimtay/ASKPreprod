@@ -823,6 +823,25 @@ export default function IntranetPage() {
           </CardContent>
         </Card>
 
+        <Link href="/intranet/requisitions/new" data-testid="card-create-arf">
+          <Card className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white border-0 cursor-pointer hover-elevate">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">Create ARF</h3>
+                  <p className="text-emerald-100 text-xs">Approval Request Form</p>
+                </div>
+              </div>
+              <p className="text-emerald-100 text-xs">
+                Procurement request with multi-stage approval workflow
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
       </div>
 
       <Card>

@@ -41,12 +41,11 @@ const MAX_ATTACHMENT_TOTAL = 40 * 1024 * 1024; // 40 MB (server caps at 50 MB pe
 const ACCEPT_TYPES = "application/pdf,image/jpeg,image/png";
 
 export default function RequisitionNewPage() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isIntranet = location.startsWith("/intranet");
-  const basePath = isIntranet ? "/intranet/requisitions" : "/erp/procurement/requisitions";
+  const basePath = "/intranet/requisitions";
 
   const { data: profile, isLoading: profileLoading } = useQuery<EmployeeProfile | null>({
     queryKey: ["/api/employee-profile"],

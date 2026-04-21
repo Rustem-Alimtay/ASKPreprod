@@ -79,7 +79,7 @@ export default function MyApprovalsPage() {
                   <span className="font-medium">AED {Number(item.requisition.estimatedCostAed).toLocaleString()}</span>
                 </div>
                 <Button asChild variant="outline" size="sm" data-testid={`button-review-${item.step.id}`}>
-                  <Link href={`/erp/procurement/requisitions/${item.requisition.id}`}>
+                  <Link href={`/intranet/requisitions/${item.requisition.id}`}>
                     Review
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Link>

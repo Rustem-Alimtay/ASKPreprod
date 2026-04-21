@@ -10,22 +10,17 @@ export const userRoles = ["superadmin", "admin", "others"] as const;
 export type UserRole = typeof userRoles[number];
 
 // Submodule registry — defines all submodules for services that have them
-export const submoduleRegistry: Record<string, { key: string; label: string; path: string }[]> = {
-  erp: [
-    { key: "requisitions", label: "Requisitions", path: "/erp/procurement/requisitions" },
-    { key: "my-approvals", label: "My Approvals", path: "/my-approvals" },
-  ],
-};
+export const submoduleRegistry: Record<string, { key: string; label: string; path: string }[]> = {};
 
 export type AllowedSubmodules = Record<string, string[]>;
 
 export const pageRegistry: { key: string; label: string; path: string }[] = [
   { key: "intranet", label: "AKS Request Center", path: "/intranet" },
-  { key: "erp", label: "ERP", path: "/erp" },
   { key: "customer-db", label: "Customer DB", path: "/applications/customer-db" },
   { key: "stable-master", label: "Stable Master", path: "/stable-master" },
   { key: "help", label: "Help Center", path: "/help" },
   { key: "my-tickets", label: "My Tickets", path: "/my-tickets" },
+  { key: "system-settings", label: "System Settings", path: "/admin/system-settings" },
 ];
 
 // Extended user with roles (managed users for admin panel)
