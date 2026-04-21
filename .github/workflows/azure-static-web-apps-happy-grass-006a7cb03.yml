@@ -42,6 +42,8 @@ jobs:
           PORT: 5173
           BASE_PATH: /
           NODE_ENV: production
+          VITE_API_URL: https://aksportal-api.purpleflower-3546a659.uaenorth.azurecontainerapps.io
+
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy

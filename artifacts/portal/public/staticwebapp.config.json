@@ -1,12 +1,6 @@
 {
-  "routes": [
-    {
-      "route": "/api/*",
-      "rewrite": "https://aksportal-api.purpleflower-3546a659.uaenorth.azurecontainerapps.io/api/*"
-    }
-  ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/assets/*", "/*.{css,js,png,jpg,svg,ico,woff,woff2}"]
+    "exclude": ["/assets/*", "/*.{css,js,png,jpg,svg,ico,woff,woff2}"]
   }
 }
